@@ -72,7 +72,7 @@ bool sys_print_float(CPU &, Memory &) {return true;} // Not implemented
 
 bool sys_print_double(CPU &, Memory &) {return true;} // Not implemented
 
-// v0 = 1, a0 = address of NULL-TERMINATED string
+// v0 = 4, a0 = address of NULL-TERMINATED string
 bool sys_print_str(CPU &cpu, Memory &mem) {
     Word addr = static_cast<Word>(A0);
     char c;

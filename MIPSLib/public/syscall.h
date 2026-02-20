@@ -14,9 +14,9 @@ using namespace MIPS;
 enum SyscallCode {
     // SPIM SYSCALLS
     SYSCALL_PRINT_INT = 1, // start from 1
-    SYSCALL_PRINT_FLOAT,
+    SYSCALL_PRINT_FLOAT, // not supported; ignored
     SYSCALL_PRINT_DOUBLE, // not supported; ignored
-    SYSCALL_PRINT_STRING, // not supported; ignored
+    SYSCALL_PRINT_STRING,
     SYSCALL_READ_INT,
     SYSCALL_READ_FLOAT, // not supported; ignored
     SYSCALL_READ_DOUBLE, // not supported; ignored
