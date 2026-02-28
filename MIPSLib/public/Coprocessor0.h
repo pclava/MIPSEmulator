@@ -1,7 +1,3 @@
-//
-// Created by Paul Clavaud on 23/12/25.
-//
-
 #ifndef MIPS_COPROCESSOR0_H
 #define MIPS_COPROCESSOR0_H
 

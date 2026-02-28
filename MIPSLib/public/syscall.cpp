@@ -1,7 +1,3 @@
-//
-// Created by Paul Clavaud on 25/12/25.
-//
-
 #include "syscall.h"
 
 #include <iostream>

@@ -1,7 +1,3 @@
-//
-// Created by Paul Clavaud on 17/12/25.
-//
-
 #ifndef MIPS_PROC_PROCESSOR_H
 #define MIPS_PROC_PROCESSOR_H
 

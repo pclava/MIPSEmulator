@@ -1,7 +1,3 @@
-//
-// Created by Paul Clavaud on 18/12/25.
-//
-
 #include "gtest/gtest.h"
 #include "Memory.h"
 #include "utils.h"

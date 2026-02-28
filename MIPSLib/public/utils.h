@@ -1,11 +1,8 @@
-//
-// Created by Paul Clavaud on 17/12/25.
-//
-
 #ifndef MIPS_PROC_UTILS_H
 #define MIPS_PROC_UTILS_H
 #include <fstream>
-#include <iostream>
+
+// bunch of randum stuff i couldn't put elsewhere
 
 namespace MIPS {
     using Byte = unsigned char;
@@ -30,9 +27,9 @@ namespace MIPS {
 
     static constexpr size_t BLOCK_SIZE = 4096; // Number of bytes per memory block
 
-    inline Word STACK_START = 0x7ff00000; // 1 MiB stack memory (TODO: dynamic stack)
+    inline Word STACK_START = 0x7ff00000; // 1 MiB stack memory
     inline Word STACK_LIMIT = 0x7fffffff;
-    inline Word HEAP_START =  0x10080000; // 1 MiB heap memory (TODO: dynamic heap)
+    inline Word HEAP_START =  0x10080000; // 1 MiB heap memory
     inline Word HEAP_LIMIT =  0x1017ffff;
     inline Word DATA_START =  0x10000000; // 1 MiB data memory
     inline Word DATA_LIMIT =  0x100fffff;
