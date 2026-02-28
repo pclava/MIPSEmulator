@@ -8,6 +8,11 @@ int main(int argc, char *argv[]) {
     Coprocessor0 c0;
     CPU cpu{&c0};
 
+    if (argc <= 1) {
+        fprintf(stderr, "Error: please provide an executable\n");
+        return 1;
+    }
+
     cpu.load_executable(argv[1], argc-1, &argv[1], mem);
 
     // THIS IS WHERE THE MAGIC HAPPENS

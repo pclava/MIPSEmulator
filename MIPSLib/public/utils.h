@@ -1,6 +1,7 @@
 #ifndef MIPS_PROC_UTILS_H
 #define MIPS_PROC_UTILS_H
 #include <fstream>
+#include <iostream>
 
 // bunch of randum stuff i couldn't put elsewhere
 

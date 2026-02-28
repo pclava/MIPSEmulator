@@ -17,6 +17,6 @@ add_library(MIPSLib ${LIB_SOURCES})
 target_include_directories(MIPSLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/public) # allows anything linked to MIPSLib to include the headers
 target_include_directories(MIPSLib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/private)
 
-add_executable(MIPS private/MIPS.cpp)
-add_dependencies(MIPS MIPSLib)
-target_link_libraries(MIPS MIPSLib)
+add_executable(MIPSEmulator private/MIPS.cpp)
+add_dependencies(MIPSEmulator MIPSLib)
+target_link_libraries(MIPSEmulator MIPSLib)
