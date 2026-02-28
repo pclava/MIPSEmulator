@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.0)
+cmake_minimum_required(VERSION 3.16)
 add_definitions(-D_GNU_SOURCE)
 project(MIPSEmulator)
 
