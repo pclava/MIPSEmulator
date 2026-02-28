@@ -20,6 +20,8 @@ set(TEST_SOURCES src/memory_tests.cpp src/register_tests.cpp src/processor_tests
 
 add_executable(MIPS_TEST ${TEST_SOURCES})
 add_dependencies(MIPS_TEST MIPSLib)
+find_package(Threads REQUIRED)
+target_link_libraries(MIPS_TEST Threads::Threads)
 target_link_libraries(MIPS_TEST GTest::gtest_main)
 target_link_libraries(MIPS_TEST MIPSLib)
 
