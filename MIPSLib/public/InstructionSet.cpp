@@ -2,6 +2,7 @@
 #include "InstructionSet.h"
 #include "utils.h"
 #include "syscall.h"
+#include <climits>
 
 using namespace MIPS;
 

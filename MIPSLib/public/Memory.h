@@ -2,7 +2,7 @@
 #define MIPS_PROC_MEMORY_H
 
 #include <vector>
-
+#include <memory>
 #include "utils.h"
 
 
