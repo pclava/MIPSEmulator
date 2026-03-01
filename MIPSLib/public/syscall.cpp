@@ -1,10 +1,9 @@
 #include "syscall.h"
-
-#include <iostream>
-#include <unistd.h>
-#include <limits>
 #include "Processor.h"
 #include "Memory.h"
+#include <unistd.h>
+#include <limits>
+#include <iostream>
 
 #define V0 cpu.RF[2]
 #define A0 cpu.RF[4]

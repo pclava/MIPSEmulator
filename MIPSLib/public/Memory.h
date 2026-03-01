@@ -1,9 +1,9 @@
 #ifndef MIPS_PROC_MEMORY_H
 #define MIPS_PROC_MEMORY_H
 
+#include "utils.h"
 #include <vector>
 #include <memory>
-#include "utils.h"
 
 // Note: does not perform safety checks
 struct MIPS::MemoryBlock {
