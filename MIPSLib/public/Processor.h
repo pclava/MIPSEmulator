@@ -6,7 +6,7 @@
 #include "utils.h"
 #include "Memory.h"
 #include "Coprocessor0.h"
-#include "syscall.h"
+#include "Syscalls.h"
 
 struct MIPS::CPU {
     Register PC;

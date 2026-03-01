@@ -11,8 +11,8 @@ set(LIB_SOURCES public/Memory.h public/InstructionSet.h public/InstructionSet.cp
         public/Register.cpp
         public/Processor.cpp
         public/Coprocessor0.cpp
-        public/syscall.cpp
-        public/syscall.h)
+        public/Syscalls.cpp
+        public/Syscalls.h)
 add_library(MIPSLib ${LIB_SOURCES})
 target_include_directories(MIPSLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/public) # allows anything linked to MIPSLib to include the headers
 target_include_directories(MIPSLib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/private)

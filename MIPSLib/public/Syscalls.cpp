@@ -1,4 +1,4 @@
-#include "syscall.h"
+#include "Syscalls.h"
 #include "Processor.h"
 #include "Memory.h"
 #include <unistd.h>

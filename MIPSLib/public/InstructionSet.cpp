@@ -1,7 +1,7 @@
 #include "Processor.h"
 #include "InstructionSet.h"
 #include "utils.h"
-#include "syscall.h"
+#include "Syscalls.h"
 #include <climits>
 
 using namespace MIPS;
