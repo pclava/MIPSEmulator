@@ -5,7 +5,6 @@
 #include <memory>
 #include "utils.h"
 
-
 // Note: does not perform safety checks
 struct MIPS::MemoryBlock {
     std::vector<Byte> data;
