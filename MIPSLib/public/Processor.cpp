@@ -1,5 +1,6 @@
 #include "utils.h"
 #include "Processor.h"
+#include <cstring>
 #include <ranges>
 
 using namespace MIPS;
