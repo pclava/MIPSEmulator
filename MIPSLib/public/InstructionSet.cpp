@@ -97,8 +97,8 @@ bool op_1c(CPU &cpu, Memory &mem, const Instruction instruction) {
 // macros for simpler casts
 #define toU32(x) static_cast<u32>(x)
 #define toS32(x) static_cast<s32>(x)
-#define toS64(x) static_cast<signed long>(x)
-#define toU64(x) static_cast<unsigned long>(toU32(x)) // need to cast to unsigned first, then to long
+#define toS64(x) static_cast<int64_t>(x)
+#define toU64(x) static_cast<uint64_t>(toU32(x)) // need to cast to unsigned first, then to long
 
 // R TYPE
 
@@ -204,14 +204,14 @@ bool op_mflo(CPU &cpu, Memory &, const Instruction instruction) {
 }
 
 bool op_mult(CPU &cpu, Memory &, const Instruction instruction) {
-    const signed long full = toS64(R(rs)) * toS64(R(rt));
+    const int64_t full = toS64(R(rs)) * toS64(R(rt));
     cpu.LO.set(toS32(full & 0x00000000FFFFFFFF));
     cpu.HI.set(toS32(full >> 32));
     return true;
 }
 
 bool op_multu(CPU &cpu, Memory &, const Instruction instruction) {
-    const unsigned long full = toU64(R(rs)) * toU64(R(rt));
+    const uint64_t full = toU64(R(rs)) * toU64(R(rt));
     cpu.LO.set(toS32(full & 0x00000000FFFFFFFF));
     cpu.HI.set(toS32(full >> 32));
     return true;
@@ -225,7 +225,7 @@ bool op_sra(CPU &cpu, Memory &, const Instruction instruction) {
 }
 
 bool op_mul(CPU &cpu, Memory &, const Instruction instruction) {
-    const signed long full = toS64(R(rs)) * toS64(R(rt));
+    const int64_t full = toS64(R(rs)) * toS64(R(rt));
     R(rd) = toS32(full & 0x00000000FFFFFFFF);
     return true;
 }
