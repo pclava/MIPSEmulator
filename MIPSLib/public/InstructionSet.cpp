@@ -18,6 +18,8 @@ void init_opcode_table(OPHandler (&op)[64], OPHandler (&funct)[64], OPHandler (&
     op[0x03] = op_jal;
     op[0x04] = op_beq;
     op[0x05] = op_bne;
+    op[0x06] = op_blez;
+    op[0x07] = op_bgtz;
     op[0x08] = op_addi;
     op[0x09] = op_addiu;
     op[0x0a] = op_slti;
@@ -274,6 +276,24 @@ bool op_beq(CPU &cpu, Memory &, const Instruction instruction) {
 bool op_bne(CPU &cpu, Memory &, const Instruction instruction) {
     // note PC was incremented in the fetch stage
     if (R(rs) != R(rt)) {
+        const s32 imm = static_cast<signed short>(instruction.imm) << 2;
+        cpu.queue_pc_update(cpu.PC.read() + 4 + imm);
+    }
+    return true;
+}
+
+bool op_blez(CPU &cpu, Memory &, const Instruction instruction) {
+    // note PC was incremented in the fetch stage
+    if (R(rs) <= 0) {
+        const s32 imm = static_cast<signed short>(instruction.imm) << 2;
+        cpu.queue_pc_update(cpu.PC.read() + 4 + imm);
+    }
+    return true;
+}
+
+bool op_bgtz(CPU &cpu, Memory &, const Instruction instruction) {
+    // note PC was incremented in the fetch stage
+    if (R(rs) >= 0) {
         const s32 imm = static_cast<signed short>(instruction.imm) << 2;
         cpu.queue_pc_update(cpu.PC.read() + 4 + imm);
     }

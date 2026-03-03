@@ -75,6 +75,8 @@ bool op_addiu(CPU&, Memory&, Instruction);
 bool op_andi(CPU&, Memory&, Instruction);
 bool op_beq(CPU&, Memory&, Instruction);
 bool op_bne(CPU&, Memory&, Instruction);
+bool op_blez(CPU&, Memory&, Instruction);
+bool op_bgtz(CPU&, Memory&, Instruction);
 bool op_lui(CPU&, Memory&, Instruction);
 bool op_lw(CPU&, Memory&, Instruction);
 bool op_ori(CPU&, Memory&, Instruction);
