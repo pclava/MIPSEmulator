@@ -3,7 +3,7 @@
 #include <fstream>
 #include <iostream>
 
-// bunch of randum stuff i couldn't put elsewhere
+// bunch of random stuff i couldn't put elsewhere
 
 namespace MIPS {
     using Byte = unsigned char;
@@ -17,7 +17,9 @@ namespace MIPS {
         ADDRESS_ERROR_EXCEPTION_LOAD = 4,
         ADDRESS_ERROR_EXCEPTION_STORE = 5,
         SYSCALL_EXCEPTION = 8,
+        BREAKPOINT_EXCEPTION = 9,
         ARITHMETIC_OVERFLOW_EXCEPTION = 12,
+        TRAP_EXCEPTION = 13,
     };
 
     struct FileHeader {

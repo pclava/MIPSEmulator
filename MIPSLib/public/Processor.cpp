@@ -12,7 +12,7 @@ CPU::CPU(Coprocessor0 *coproc, std::istream& input, std::ostream& output) :
     system(input, output)
 {
     c0 = coproc;
-    init_opcode_table(opcode_table, funct_table, spec2_table);
+    init_opcode_table(opcode_table, funct_table);
 }
 
 void CPU::set_pc_entry(const Word entry) {

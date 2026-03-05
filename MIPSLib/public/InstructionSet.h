@@ -37,14 +37,12 @@ struct MIPS::Instruction {
     }
 };
 
-void init_opcode_table(OPHandler (&)[64], OPHandler (&)[64], OPHandler (&)[64]);
+void init_opcode_table(OPHandler (&)[64], OPHandler (&)[64]);
 
 bool op_undefined(CPU&, Memory&, Instruction);
-bool op_zero(CPU&, Memory&, Instruction);
-bool op_1c(CPU&, Memory&, Instruction);
+bool op_special(CPU&, Memory&, Instruction);
 
 /* === R-TYPE === */
-// SPECIAL1 ENCODING
 bool op_add(CPU&, Memory&, Instruction);
 bool op_addu(CPU&, Memory&, Instruction);
 bool op_and(CPU&, Memory&, Instruction);
@@ -55,6 +53,9 @@ bool op_slt(CPU&, Memory&, Instruction);
 bool op_sltu(CPU&, Memory&, Instruction);
 bool op_sll(CPU&, Memory&, Instruction);
 bool op_srl(CPU&, Memory&, Instruction);
+bool op_sllv(CPU&, Memory&, Instruction);
+bool op_srlv(CPU&, Memory&, Instruction);
+bool op_srav(CPU&, Memory&, Instruction);
 bool op_sub(CPU&, Memory&, Instruction);
 bool op_subu(CPU&, Memory&, Instruction);
 bool op_div(CPU&, Memory&, Instruction);
@@ -65,9 +66,14 @@ bool op_mult(CPU&, Memory&, Instruction);
 bool op_multu(CPU&, Memory&, Instruction);
 bool op_sra(CPU&, Memory&, Instruction);
 bool op_xor(CPU&, Memory&, Instruction);
-
-// SPECIAL2 ENCODING
-bool op_mul(CPU&, Memory&, Instruction);
+bool op_tge(CPU&, Memory&, Instruction);
+bool op_tgeu(CPU&, Memory&, Instruction);
+bool op_tlt(CPU&, Memory&, Instruction);
+bool op_tltu(CPU&, Memory&, Instruction);
+bool op_teq(CPU&, Memory&, Instruction);
+bool op_tne(CPU&, Memory&, Instruction);
+bool op_seleqz(CPU&, Memory&, Instruction);
+bool op_selnez(CPU&, Memory&, Instruction);
 
 /* === I-TYPE === */
 bool op_addi(CPU&, Memory&, Instruction);
@@ -85,13 +91,18 @@ bool op_sltiu(CPU&, Memory&, Instruction);
 bool op_sb(CPU&, Memory&, Instruction);
 bool op_sh(CPU&, Memory&, Instruction);
 bool op_sw(CPU&, Memory&, Instruction);
+bool op_swl(CPU&, Memory&, Instruction);
+bool op_swr(CPU&, Memory&, Instruction);
 bool op_lb(CPU&, Memory&, Instruction);
 bool op_lbu(CPU&, Memory&, Instruction);
+bool op_lh(CPU&, Memory&, Instruction);
+bool op_lhu(CPU&, Memory&, Instruction);
+bool op_lwl(CPU&, Memory&, Instruction);
+bool op_lwr(CPU&, Memory&, Instruction);
 
-/* === SPECIAL === */
+/* === OTHER === */
 bool op_syscall(CPU&, Memory&, Instruction); // syscalls aren't actually instructions and should instead raise a syscall exception but it's easier this way
-// NOTE: 'nop' is the same funct and op as 'sll', meaning 'nop' is equivalent to 'sll $0 $0 0', which naturally does nothing
-// meaning nothing special needs to be written for nop
+bool op_break(CPU&, Memory&, Instruction); // syscalls aren't actually instructions and should instead raise a syscall exception but it's easier this way
 
 /* === J-TYPE === */
 bool op_j(CPU&, Memory&, Instruction);

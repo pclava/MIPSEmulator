@@ -17,7 +17,6 @@ struct MIPS::CPU {
 
     OPHandler opcode_table[64]{};
     OPHandler funct_table[64]{};
-    OPHandler spec2_table[64]{};
 
     System system; // contains file streams for input and output
 

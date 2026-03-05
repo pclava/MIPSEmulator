@@ -23,8 +23,7 @@ bool Coprocessor0::handle_exception(CPU &state) {
     state.queue_pc_update(state.PC.read()+4); // resume at next instruction
     fprintf(stderr, "\nRuntime exception at 0x%.8x:\n ", epc.read());
     bool ret = false;
-    ExceptionCode c = read_cause();
-    switch (c) {
+    switch (read_cause()) {
         case INTERRUPT:
             fprintf(stderr, "hardware interrupt\n");
             ret = true;
@@ -40,6 +39,12 @@ bool Coprocessor0::handle_exception(CPU &state) {
             break;
         case SYSCALL_EXCEPTION:
             fprintf(stderr, "syscall exception\n");
+            break;
+        case BREAKPOINT_EXCEPTION:
+            fprintf(stderr, "breakpoint exception\n");
+            break;
+        case TRAP_EXCEPTION:
+            fprintf(stderr, "trap exception\n");
             break;
         default:
             fprintf(stderr, "unknown exception\n");

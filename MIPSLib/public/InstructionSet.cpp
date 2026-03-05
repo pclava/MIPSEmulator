@@ -6,14 +6,13 @@
 
 using namespace MIPS;
 
-void init_opcode_table(OPHandler (&op)[64], OPHandler (&funct)[64], OPHandler (&spec_2)[64]) {
+void init_opcode_table(OPHandler (&op)[64], OPHandler (&funct)[64]) {
     for (int i = 0; i < 64; i++) {
         op[i] = op_undefined;
         funct[i] = op_undefined;
-        spec_2[i] = op_undefined;
     }
 
-    op[0] = op_zero;
+    op[0x00] = op_special;
     op[0x02] = op_j;
     op[0x03] = op_jal;
     op[0x04] = op_beq;
@@ -27,19 +26,28 @@ void init_opcode_table(OPHandler (&op)[64], OPHandler (&funct)[64], OPHandler (&
     op[0x0c] = op_andi;
     op[0x0d] = op_ori;
     op[0x0f] = op_lui;
-    op[0x1c] = op_1c;
     op[0x20] = op_lb;
+    op[0x21] = op_lh;
+    op[0x22] = op_lwl;
     op[0x23] = op_lw;
     op[0x24] = op_lbu;
+    op[0x25] = op_lhu;
+    op[0x26] = op_lwr;
     op[0x28] = op_sb;
     op[0x29] = op_sh;
+    op[0x2a] = op_swl;
     op[0x2b] = op_sw;
+    op[0x2e] = op_swr;
 
     funct[0x00] = op_sll;
     funct[0x02] = op_srl;
     funct[0x03] = op_sra;
+    funct[0x04] = op_sllv;
+    funct[0x06] = op_srlv;
+    funct[0x07] = op_srav;
     funct[0x08] = op_jr;
     funct[0x0c] = op_syscall;
+    funct[0x0d] = op_break;
     funct[0x10] = op_mfhi;
     funct[0x12] = op_mflo;
     funct[0x18] = op_mult;
@@ -56,8 +64,14 @@ void init_opcode_table(OPHandler (&op)[64], OPHandler (&funct)[64], OPHandler (&
     funct[0x27] = op_nor;
     funct[0x2a] = op_slt;
     funct[0x2b] = op_sltu;
-
-    spec_2[0x02] = op_mul;
+    funct[0x30] = op_tge;
+    funct[0x31] = op_tgeu;
+    funct[0x32] = op_tlt;
+    funct[0x33] = op_tltu;
+    funct[0x34] = op_teq;
+    funct[0x35] = op_seleqz;
+    funct[0x36] = op_tne;
+    funct[0x37] = op_selnez;
 }
 
 s32 signExtend(const unsigned short imm) {
@@ -81,16 +95,11 @@ bool op_undefined(CPU &, Memory&, Instruction) {
 }
 
 // Opcode zero (SPECIAL encoding)
-bool op_zero(CPU & cpu, Memory & mem, const Instruction instruction) {
+bool op_special(CPU & cpu, Memory & mem, const Instruction instruction) {
     return cpu.funct_table[instruction.funct](cpu, mem, instruction);
 }
 
-// Opcode 28 (SPECIAL2 encoding)
-bool op_1c(CPU &cpu, Memory &mem, const Instruction instruction) {
-    return cpu.spec2_table[instruction.funct](cpu, mem, instruction);
-}
-
-// macro for instructions of the form rd = f(rs, rt)
+// macro for instructions of the form rd = rs (operator) rt
 #define rfunc(operation) cpu.RF[instruction.rd] = cpu.RF[instruction.rs] operation cpu.RF[instruction.rt];
 
 // macro for simpler register accesses
@@ -151,7 +160,6 @@ bool op_sltu(CPU &cpu, Memory &, const Instruction instruction) {
 
 // Also counts as 'nop'
 bool op_sll(CPU &cpu, Memory &, const Instruction instruction) {
-
     // Get shamt mod 32
     unsigned char shamt = (instruction.shamt % 32 + 32) % 32;
     R(rd) = R(rt) << shamt;
@@ -222,13 +230,30 @@ bool op_multu(CPU &cpu, Memory &, const Instruction instruction) {
 bool op_sra(CPU &cpu, Memory &, const Instruction instruction) {
     // get shamt mod 32
     unsigned char shamt = (instruction.shamt % 32 + 32) % 32;
-    R(rd) = R(rt) >> shamt; // registers stored s32, so C++ performs arithmetic shift by default
+    R(rd) = R(rt) >> shamt; // registers store s32, so C++ performs arithmetic shift by default
     return true;
 }
 
-bool op_mul(CPU &cpu, Memory &, const Instruction instruction) {
-    const int64_t full = toS64(R(rs)) * toS64(R(rt));
-    R(rd) = toS32(full & 0x00000000FFFFFFFF);
+bool op_sllv(CPU &cpu, Memory &, const Instruction instruction) {
+    // Get low-order 5 bits of rs and shift by that amount
+    unsigned char shamt = R(rs) & 0x1f;
+    R(rd) = R(rt) << shamt;
+    return true;
+}
+
+bool op_srlv(CPU &cpu, Memory &, const Instruction instruction) {
+    // Get low-order 5 bits of rs and shift by that amount
+    unsigned char shamt = R(rs) & 0x1f;
+    // first perform on unsigned to guarantee logical shift
+    u32 res = toU32(R(rt)) >> shamt;
+    R(rd) = toS32(res);
+    return true;
+}
+
+bool op_srav(CPU &cpu, Memory &, const Instruction instruction) {
+    // Get low-order 5 bits of rs and shift by that amount
+    unsigned char shamt = R(rs) & 0x1f;
+    R(rd) = R(rt) >> shamt; // registers store s32, so C++ performs arithmetic shift by default
     return true;
 }
 
@@ -236,8 +261,53 @@ bool op_syscall(CPU &cpu, Memory &mem, const Instruction) {
     return do_syscall(cpu, mem);
 }
 
+bool op_break(CPU &cpu, Memory &, const Instruction) {
+    cpu.raise_exception(BREAKPOINT_EXCEPTION);
+    return true;
+}
+
 bool op_xor(CPU &cpu, Memory &, const Instruction instruction) {
     rfunc(xor);
+    return true;
+}
+
+bool op_tge(CPU &cpu, Memory &, const Instruction instruction) {
+    if (R(rs) >= R(rt)) cpu.raise_exception(TRAP_EXCEPTION);
+    return true;
+}
+
+bool op_tgeu(CPU &cpu, Memory &, const Instruction instruction) {
+    if (toU32(R(rs)) >= toU32(R(rt))) cpu.raise_exception(TRAP_EXCEPTION);
+    return true;
+}
+
+bool op_tlt(CPU &cpu, Memory &, const Instruction instruction) {
+    if (R(rs) < R(rt)) cpu.raise_exception(TRAP_EXCEPTION);
+    return true;
+}
+
+bool op_tltu(CPU &cpu, Memory &, const Instruction instruction) {
+    if (toU32(R(rs)) < toU32(R(rt))) cpu.raise_exception(TRAP_EXCEPTION);
+    return true;
+}
+
+bool op_teq(CPU &cpu, Memory &, const Instruction instruction) {
+    if (R(rs) == R(rt)) cpu.raise_exception(TRAP_EXCEPTION);
+    return true;
+}
+
+bool op_tne(CPU &cpu, Memory &, const Instruction instruction) {
+    if (R(rs) != R(rt)) cpu.raise_exception(TRAP_EXCEPTION);
+    return true;
+}
+
+bool op_seleqz(CPU &cpu, Memory &, const Instruction instruction) {
+    R(rd) = R(rt) ? 0 : R(rs);
+    return true;
+}
+
+bool op_selnez(CPU &cpu, Memory &, const Instruction instruction) {
+    R(rd) = R(rt) ? R(rs) : 0;
     return true;
 }
 
@@ -410,7 +480,6 @@ bool op_lb(CPU &cpu, Memory &mem, const Instruction instruction) {
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD);
         return false;
     }
-    // static_cast<s32>(static_cast<signed short>(imm));
     R(rt) = signExtend(value);
     return true;
 }
@@ -427,6 +496,138 @@ bool op_lbu(CPU &cpu, Memory &mem, const Instruction instruction) {
         return false;
     }
     R(rt) = zeroExtend(value);
+    return true;
+}
+
+bool op_lh(CPU &cpu, Memory &mem, const Instruction instruction) {
+    const s32 imm = signExtend(instruction.imm);
+    const Word addr = R(rs) + imm;
+    if (addr % 2 != 0) {
+        cpu.c0->vaddr.set(toS32(addr));
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD);
+        return false;
+    }
+    Half value = 0;
+    try {
+        value |= mem.readByte(addr);
+        value |= mem.readByte(addr+1) << 8;
+    } catch (const std::out_of_range&) {
+        cpu.c0->vaddr.set(toS32(addr));
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD);
+        return false;
+    }
+    R(rt) = signExtend(value);
+    return true;
+}
+
+bool op_lhu(CPU &cpu, Memory &mem, const Instruction instruction) {
+    const s32 imm = signExtend(instruction.imm);
+    const Word addr = R(rs) + imm;
+    if (addr % 2 != 0) {
+        cpu.c0->vaddr.set(toS32(addr));
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD);
+        return false;
+    }
+    Half value = 0;
+    try {
+        value |= mem.readByte(addr);
+        value |= mem.readByte(addr+1) << 8;
+    } catch (const std::out_of_range&) {
+        cpu.c0->vaddr.set(toS32(addr));
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD);
+        return false;
+    }
+    R(rt) = zeroExtend(value);
+    return true;
+}
+
+bool op_lwl(CPU &cpu, Memory &mem, const Instruction instruction) {
+    const s32 imm = signExtend(instruction.imm);
+    const Word addr = R(rs) + imm; // address of most significant byte of the word
+    Word value = 0;
+    const Word offset = addr % 4; // how far left (in bytes) the word boundary is
+    unsigned char j = 24; // start at most significant byte
+    try {
+        for (Word i = 0; i <= offset; i++) {
+            value |= mem.readByte(addr - i) << j;
+            j -= 8;
+        }
+    } catch (const std::out_of_range&) {
+        cpu.c0->vaddr.set(toS32(addr));
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD);
+        return false;
+    }
+    // Preserve LSBs of rt
+    // j+8 represents number of bits that were not read from memory
+    // extract the lower j+8 bits of rt and OR with value
+    R(rt) = toS32(value) | (R(rt) & (1 << (j+8))-1);
+    return true;
+}
+
+bool op_lwr(CPU &cpu, Memory &mem, const Instruction instruction) {
+    const s32 imm = signExtend(instruction.imm);
+    const Word addr = R(rs) + imm; // address of least significant byte of the word
+    Word value = 0;
+    const Word offset = 4-(addr % 4); // how far right (in bytes) the word boundary is
+    unsigned char j = 0; // start at least significant byte
+    try {
+        for (Word i = 0; i < offset; i++) {
+            value |= mem.readByte(addr + i) << j;
+            j += 8;
+        }
+    } catch (const std::out_of_range&) {
+        cpu.c0->vaddr.set(toS32(addr));
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD);
+        return false;
+    }
+    // Preserve MSBs of rt
+    // j represents number of bits that were read from memory
+    // extract upper 32-j bits of rt
+    s32 mask = (1 << (32-j)) - 1;
+    mask <<= j;
+    R(rt) = (R(rt) & mask) | (toS32(value));
+    return true;
+}
+
+bool op_swl(CPU &cpu, Memory &mem, const Instruction instruction) {
+    const s32 imm = signExtend(instruction.imm);
+    const Word addr = R(rs) + imm; // address of most significant byte of the word
+    const Word offset = addr % 4; // how far left (in bytes) the word boundary is
+    unsigned char j = 24; // start at most significant byte
+    try {
+        for (Word i = 0; i <= offset; i++) {
+            // Extract j'th byte from register
+            Byte x = R(rt) >> j & 0xFF;
+            // Store at addr-i
+            mem.writeByte(addr-i, x);
+            j-=8;
+        }
+    } catch (const std::out_of_range&) {
+        cpu.c0->vaddr.set(toS32(addr));
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD);
+        return false;
+    }
+    return true;
+}
+
+bool op_swr(CPU &cpu, Memory &mem, const Instruction instruction) {
+    const s32 imm = signExtend(instruction.imm);
+    const Word addr = R(rs) + imm; // address of least significant byte of the word
+    const Word offset = 4-(addr % 4); // how far right (in bytes) the word boundary is
+    unsigned char j = 0; // start at most significant byte
+    try {
+        for (Word i = 0; i < offset; i++) {
+            // Extract j'th byte from register
+            Byte x = R(rt) >> j & 0xFF;
+            // Store at addr-i
+            mem.writeByte(addr+i, x);
+            j+=8;
+        }
+    } catch (const std::out_of_range&) {
+        cpu.c0->vaddr.set(toS32(addr));
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD);
+        return false;
+    }
     return true;
 }
 

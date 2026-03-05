@@ -29,6 +29,10 @@ protected:
     EXPECT_THROW(cpu.Execute(mem, CPU::Decode(machine_code)), std::runtime_error); \
     EXPECT_EQ(cpu.exit, 255);
 
+#define EXPECT_PASS(machine_code) \
+    EXPECT_NO_THROW(cpu.Execute(mem, CPU::Decode(machine_code))); \
+    EXPECT_EQ(cpu.exit,0);
+
 TEST_F(InstructionTest, TestAdd) {
     R(8) = 99;
     R(9) = 2335;
@@ -63,7 +67,7 @@ TEST_F(InstructionTest, AddAndSubCauseArithmeticExceptionOverflow) {
     Word code = 0x012a4020; // add r8 r9 r10
     EXPECT_FAIL(code);
 
-    cpu.exit = false;
+    cpu.exit = 0;
 
     R(9) = 2147483647;
     R(10) = -1;
@@ -186,6 +190,27 @@ TEST_F(InstructionTest, TestBitShifts) {
     EXPECT_EQ(cpu.RF.read(8), 6);
 }
 
+TEST_F(InstructionTest, TestVariableBitShifts) {
+    R(8) = 271;
+    R(9) = 982;
+    R(10) = 9999;
+    Word code = 0x01494004; // sllv t0, t1, t2
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(8), 0x01eb0000);
+
+    R(9) = -982;
+    R(10) = 9999;
+    code = 0x01494006; // srlv t0, t1, t2
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(8), 0x0001ffff);
+
+    R(9) = -982;
+    R(10) = 9991;
+    code = 0x01494007; // srav t0, t1, t2
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(8), 0xfffffff8);
+}
+
 TEST_F(InstructionTest, TestSub) {
     R(8) = 23235;
     R(9) = 8643;
@@ -249,17 +274,6 @@ TEST_F(InstructionTest, TestCompleteMultiplicationOperation) {
     EXPECT_EQ(cpu.RF.read(18), 1972);
     EXPECT_EQ(cpu.RF.read(19), -2073008360);
 }
-
-TEST_F(InstructionTest, TestMul) {
-    R(8) = 59301;
-    R(9) = 9876;
-    R(10) = 873431;
-    Word code = 0x712a4002; // mul r8 r9 r10
-    cpu.Execute(mem, CPU::Decode(code));
-    EXPECT_EQ(R(8), 0x0226624c); // 36069964
-}
-
-/* I-TYPE TESTS */
 
 TEST_F(InstructionTest, TestAddi) {
     R(8) = 2344;
@@ -494,7 +508,100 @@ TEST_F(InstructionTest, TestLbu) {
     EXPECT_EQ(R(10), 0x88);
 }
 
-/* J-TYPE TESTS */
+TEST_F(InstructionTest, TestLh) {
+    R(8) = 0x10010000; // t0
+    R(9) = 641;
+    mem.writeByte(R(8), R(9) & 0xFF);
+    mem.writeByte(R(8)+1, (R(9) & 0xFF00) >> 8);
+    Word code = 0x850a0000; // lh t2, 0(t0)
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(10), 0x281);
+
+    // test sign extension
+    R(9) = -454;
+    mem.writeByte(R(8), R(9) & 0xFF);
+    mem.writeByte(R(8)+1, (R(9) & 0xFF00) >> 8);
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(10), 0xfffffe3a);
+}
+
+TEST_F(InstructionTest, TestLhu) {
+    R(8) = 0x10010000; // t0
+    R(9) = 641;
+    mem.writeByte(R(8), R(9) & 0xFF);
+    mem.writeByte(R(8)+1, (R(9) & 0xFF00) >> 8);
+    Word code = 0x950a0000; // lhu t2, 0(t0)
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(10), 0x281);
+
+    // test zero extension
+    R(9) = -454;
+    mem.writeByte(R(8), R(9) & 0xFF);
+    mem.writeByte(R(8)+1, (R(9) & 0xFF00) >> 8);
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(10), 0xfe3a);
+}
+
+TEST_F(InstructionTest, TestUnalignedLoad) {
+    // Write some values into memory
+    R(9) = 0x10010000;
+    mem.writeByte(R(9), 0);
+    mem.writeByte(R(9)+1, 1);
+    mem.writeByte(R(9)+2, 2);
+    mem.writeByte(R(9)+3, 3);
+    mem.writeByte(R(9)+4, 4);
+    mem.writeByte(R(9)+5, 5);
+    mem.writeByte(R(9)+6, 6);
+    mem.writeByte(R(9)+7, 7);
+
+    R(8) = 0x72abe9df;
+    Word code = 0x89280006; // lwl t0, 6(t1)
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(8), 0x060504df);
+
+    code = 0x99280003; // lwr t0, 3(t1)
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(8), 0x06050403);
+
+    // Test on word boundaries
+    R(8) = 0x7edcba98;
+    code = 0x89280004; // lwl t0, 4(t1)
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(8), 0x04dcba98);
+
+    R(8) = 0x7edcba98;
+    code = 0x99280004; // lwr t0, 4(t1)
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(8), 0x07060504);
+}
+
+TEST_F(InstructionTest, TestUnalignedStore) {
+    R(9) = 0x10010000;
+    R(8) = 0x747ab431;
+    Word code = 0xa9280006; // swl t0, 6(t1)
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(mem.readWord(0x10010004), 0x00747ab4);
+
+    code = 0xB9280003; // swr t0, 3(t1)
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(mem.readWord(0x10010003), R(8));
+
+    // Test on word boundaries
+    R(8) = 0x1a2b3c4d;
+    code = 0xa9280007; // swl t0, 7(t1)
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(mem.readWord(0x10010004), R(8));
+
+    R(8) = 0x01020304;
+    code = 0xa9280004; // swl t0, 4(t1)
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(mem.readWord(0x10010004), 0x1a2b3c01);
+
+    R(8) = 0x18423789;
+    code = 0xB9280004; // swr t0, 4(t1)
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(mem.readWord(0x10010004), R(8));
+}
 
 TEST_F(InstructionTest, TestJ) {
     Word code = 0x08100008; // j 0x00400020
@@ -513,4 +620,103 @@ TEST_F(InstructionTest, TestJal) {
 
     EXPECT_EQ(cpu.PC.read(), 0x00400cbc); // new pc should be at addr cbc
     EXPECT_EQ(R(31), 0x00400ac0); // $ra should be set to original PC+4
+}
+
+TEST_F(InstructionTest, TestBreak) {
+    const Word code = 0x0d;
+    EXPECT_FAIL(code);
+}
+
+TEST_F(InstructionTest, TestTraps) {
+    // TEQ
+    Word code = 0x01090034; // teq t0, t1
+    R(8) = 19;
+    R(9) = 19;
+    EXPECT_FAIL(code);
+    cpu.exit = 0;
+    R(8) = 56423;
+    R(9) = 716;
+    EXPECT_PASS(code);
+
+    // TNE
+    code = 0x01090036; // tne t0, t1
+    EXPECT_FAIL(code);
+    cpu.exit = 0;
+    R(8) = 29;
+    R(9) = 29;
+    EXPECT_PASS(code);
+
+    // TLT
+    code = 0x01090032; // tlt t0, t1
+    R(8) = -1;
+    R(9) = 1;
+    EXPECT_FAIL(code);
+    cpu.exit = 0;
+    R(8) = 2;
+    R(9) = 2;
+    EXPECT_PASS(code);
+
+    // TLTU
+    code = 0x01090033; // tltu t0, t1
+    R(8) = 0;
+    R(9) = 1;
+    EXPECT_FAIL(code);
+    cpu.exit = 0;
+    R(8) = -1;
+    R(9) = 1;
+    EXPECT_PASS(code);
+
+    // TGE
+    code = 0x01090030; // tge t0, t1
+    R(8) = 81;
+    R(9) = -81;
+    EXPECT_FAIL(code);
+    cpu.exit = 0;
+    R(8) = -81;
+    R(9) = 81;
+    EXPECT_PASS(code);
+
+    // TGEU
+    code = 0x01090031; // tgeu t0, t1
+    R(8) = -81;
+    R(9) = 81;
+    EXPECT_FAIL(code);
+    cpu.exit = 0;
+    R(8) = 81;
+    R(9) = -81;
+    EXPECT_PASS(code);
+}
+
+TEST_F(InstructionTest, TestSel) {
+    // SELEQZ true (check t2, set t0 to t1)
+    R(8) = 194;
+    R(9) = 98765;
+    R(10) = 0;
+    // 000000.01001.01010.01000.00000.110101
+    Word code = 0x012A4035; // seleqz t0, t1, t2
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(8), R(9));
+
+    // SELEQZ false (check t2, set t0 to 0)
+    R(8) = 194;
+    R(9) = 98755;
+    R(10) = 672;
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(8), 0);
+
+    // SELNEZ true (check t2, set t0 to t1)
+    R(8) = 194;
+    R(9) = 98755;
+    R(10) = 672;
+    code = 0x012A4037; // selnez t0, t1, t2
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(8), R(9));
+
+    // SELNEZ false (check t2, set t0 to 0)
+    R(8) = 194;
+    R(9) = 98755;
+    R(10) = 0;
+    code = 0x012A4037; // selnez t0, t1, t2
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(8), 0);
 }
