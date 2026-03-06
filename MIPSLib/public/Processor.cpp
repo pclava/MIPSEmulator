@@ -34,7 +34,7 @@ Word CPU::Fetch(Memory &MEM) {
         ret = MEM.readWord(PC.read());
     } catch (const std::out_of_range&) {
         c0->vaddr.set(PC.read());
-        raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD);
+        raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0));
         return 0;
     }
     newPC = PC.read()+4;
@@ -58,10 +58,11 @@ void CPU::terminate(unsigned char code) {
     throw std::runtime_error("CPU terminated");
 }
 
-void CPU::raise_exception(const ExceptionCode exception) {
+void CPU::raise_exception(const ExceptionCode exception, const Instruction instr) {
     c0->set_cause(exception); // set the cause register
     c0->epc.set(PC.read()); // set epc to instruction that caused exception
     c0->status.set(c0->status.read() | 0b10); // set status bit 1
+    c0->bad.set((instr.opcode << 26) | (instr.addr)); // recover bad instruction
     if (c0->handle_exception(*this) == 0) terminate(255);
 }
 

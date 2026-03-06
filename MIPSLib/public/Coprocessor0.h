@@ -10,6 +10,7 @@ struct MIPS::Coprocessor0 {
     Register status;
     Register cause;
     Register epc;
+    Register bad; // NOT PART OF MIPS: added by me to make debugging easier. holds instruction that raised exception
 
     Coprocessor0();
 
