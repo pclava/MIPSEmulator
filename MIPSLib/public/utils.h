@@ -6,11 +6,11 @@
 // bunch of random stuff i couldn't put elsewhere
 
 namespace MIPS {
-    using Byte = unsigned char;
-    using Half = unsigned short;
-    using Word = unsigned int;
-    using u32 = unsigned int;
-    using s32 = signed int;
+    using Byte = uint8_t;
+    using Half = uint16_t;
+    using Word = uint32_t;
+    using u32 = uint32_t;
+    using s32 = int32_t;
 
     enum ExceptionCode {
         INTERRUPT = 0,
