@@ -74,9 +74,7 @@ struct MIPS::Memory {
     MemorySegment data;
     MemorySegment text;
 
-    // Keep track of program length to avoid undefined behavior when program does not
-    // exit on its own
-    Word text_length;
+    Word heapAddress; // address of first unallocated byte
 
     Memory();
 

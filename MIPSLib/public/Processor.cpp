@@ -82,8 +82,6 @@ void CPU::load_executable(const std::string& path, const int argc, char **argv, 
         mem.writeByte(TEXT_START+i, read_byte( file));
     }
 
-    mem.text_length = header.text_size;
-
     // Load text segment
     for (Word i = 0; i < header.data_size; i++) {
         mem.writeByte(DATA_START+0x10000+i, read_byte( file)); // start writing at 0x10010000

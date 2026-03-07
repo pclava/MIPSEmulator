@@ -126,7 +126,7 @@ Memory::Memory() :
     heap(HEAP_START, HEAP_LIMIT),
     data(DATA_START, DATA_LIMIT),
     text(TEXT_START, TEXT_LIMIT),
-    text_length(0) {}
+    heapAddress(HEAP_START) {}
 
 Byte Memory::readByte(const Word addr) {
     if (stack.inSegment(addr)) {
