@@ -284,9 +284,9 @@ TEST_F(SyscallTest, CanUseHeap) {
 
     // Allocate large block
     R(2) = 9;
-    R(4) = 0xfffff; // one word less than the max
+    R(4) = static_cast<s32>(DATA_LIMIT - HEAP_START); // one word less than the max
     cpu.Execute(mem, CPU::Decode(0xc));
-    EXPECT_EQ(mem.heapAddress, HEAP_LIMIT+1);
+    EXPECT_EQ(mem.heapAddress, DATA_LIMIT+1);
     EXPECT_EQ(R(2), HEAP_START);
 
     // Allocate one more, expect failure

@@ -5,6 +5,19 @@
 #include <vector>
 #include <memory>
 
+/*
+* Memory is divided into 3 disjoint MemorySegments, each 4 Mb
+* Each MemorySegment is an array of pointers to MemoryBlocks
+* A MemoryBlock, when initialized, is an array of 4096 Bytes
+* The emulator only initializes a MemoryBlock when an address
+* inside it is referenced, in order to be efficient with space.
+* A 4 Mb MemorySegment has 1024 blocks. Therefore, a program
+* that does not use any emulated memory will only
+* use up enough memory to allocate 3 arrays of 1024 pointers,
+* and enough 4096-byte chunks to store the program's contents
+* in the text segment.
+*/
+
 // Note: does not perform safety checks
 struct MIPS::MemoryBlock {
     std::vector<Byte> data;
@@ -70,7 +83,6 @@ struct MIPS::MemorySegment {
 
 struct MIPS::Memory {
     MemorySegment stack;
-    MemorySegment heap;
     MemorySegment data;
     MemorySegment text;
 

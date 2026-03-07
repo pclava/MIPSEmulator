@@ -133,7 +133,7 @@ bool sys_sbrk(CPU &cpu, Memory &mem) {
     if (new_pbrk % 4 != 0) new_pbrk += 4 - new_pbrk % 4;
     // note heapAddress points to the first unallocated byte. if the whole heap is allocated,
     // this is HEAP_LIMIT+1
-    if (new_pbrk > HEAP_LIMIT+1) {
+    if (new_pbrk > DATA_LIMIT+1) {
         cpu.raise_exception(SYSCALL_EXCEPTION, Instruction::decode_instr(0xc));
         return false;
     }
@@ -282,7 +282,7 @@ bool sys_print_unsigned(CPU &cpu, Memory &) {
 // v0 = 23, a0 = address
 bool sys_brk(CPU &cpu, Memory &mem) {
     Word addr = static_cast<Word>(A0);
-    if (addr < HEAP_START || addr > HEAP_LIMIT) {
+    if (addr < DATA_START || addr > DATA_LIMIT) {
         cpu.raise_exception(SYSCALL_EXCEPTION, Instruction::decode_instr(0xc));
         return false;
     }

@@ -30,14 +30,21 @@ namespace MIPS {
 
     static constexpr size_t BLOCK_SIZE = 4096; // Number of bytes per memory block
 
-    inline Word STACK_START = 0x7ff00000; // 1 MiB stack memory
+    /*
+     * NOTE:
+     * the real MIPS stack goes from 0x10040000 to 0x7fffffff
+     * the real MIPS text segment goes from 0x00400000 to 0x0fffffff
+     *
+     * the emulator only simulates 4 Mb of these
+     */
+    inline Word STACK_START = 0x7fc00000; // 4 Mb stack memory
     inline Word STACK_LIMIT = 0x7fffffff;
-    inline Word HEAP_START =  0x10080000; // 1 MiB heap memory
-    inline Word HEAP_LIMIT =  0x1017ffff;
-    inline Word DATA_START =  0x10000000; // 1 MiB data memory
-    inline Word DATA_LIMIT =  0x100fffff;
-    inline Word TEXT_START =  0x00400000; // 1 MiB text memory
-    inline Word TEXT_LIMIT =  0x004fffff;
+    inline Word DATA_START =  0x10000000; // 4 Mb data memory
+    inline Word DATA_LIMIT =  0x103fffff;
+    inline Word TEXT_START =  0x00400000; // 4 Mb text memory
+    inline Word TEXT_LIMIT =  0x007fffff;
+
+    inline Word HEAP_START =  0x10080000; // starting heap pointer (heap can go below, down to DATA_START)
 
     struct Register;
     struct RegisterFile;

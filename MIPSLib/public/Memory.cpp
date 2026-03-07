@@ -123,7 +123,6 @@ void MemorySegment::reset() const {
 
 Memory::Memory() :
     stack(STACK_START, STACK_LIMIT),
-    heap(HEAP_START, HEAP_LIMIT),
     data(DATA_START, DATA_LIMIT),
     text(TEXT_START, TEXT_LIMIT),
     heapAddress(HEAP_START) {}
@@ -131,9 +130,6 @@ Memory::Memory() :
 Byte Memory::readByte(const Word addr) {
     if (stack.inSegment(addr)) {
         return stack.readByte(addr);
-    }
-    if (heap.inSegment(addr)) {
-        return heap.readByte(addr);
     }
     if (text.inSegment(addr)) {
         return text.readByte(addr);
@@ -147,10 +143,6 @@ Byte Memory::readByte(const Word addr) {
 void Memory::readN(const Word addr, const Word num_bytes, Byte *buf) {
     if (stack.inSegment(addr)) {
         stack.readN(addr, num_bytes, buf);
-        return;
-    }
-    if (heap.inSegment(addr)) {
-        heap.readN(addr, num_bytes, buf);
         return;
     }
     if (text.inSegment(addr)) {
@@ -169,9 +161,6 @@ Word Memory::readWord(const Word addr) {
     if (stack.inSegment(addr)) {
         return stack.readWord(addr);
     }
-    if (heap.inSegment(addr)) {
-        return heap.readWord(addr);
-    }
     if (text.inSegment(addr)) {
         return text.readWord(addr);
     }
@@ -184,10 +173,6 @@ Word Memory::readWord(const Word addr) {
 void Memory::writeByte(const Word addr, Byte byte) {
     if (stack.inSegment(addr)) {
         stack.writeByte(addr, byte);
-        return;
-    }
-    if (heap.inSegment(addr)) {
-        heap.writeByte(addr, byte);
         return;
     }
     if (text.inSegment(addr)) {
@@ -206,10 +191,6 @@ void Memory::writeN(const Word addr, const Word num_bytes, const Byte *buf) {
         stack.writeN(addr, num_bytes, buf);
         return;
     }
-    if (heap.inSegment(addr)) {
-        heap.writeN(addr, num_bytes, buf);
-        return;
-    }
     if (text.inSegment(addr)) {
         text.writeN(addr, num_bytes, buf);
         return;
@@ -224,10 +205,6 @@ void Memory::writeN(const Word addr, const Word num_bytes, const Byte *buf) {
 void Memory::writeWord(const Word addr, Word word) {
     if (stack.inSegment(addr)) {
         stack.writeWord(addr, word);
-        return;
-    }
-    if (heap.inSegment(addr)) {
-        heap.writeWord(addr, word);
         return;
     }
     if (text.inSegment(addr)) {
@@ -246,9 +223,6 @@ Byte Memory::operator[](const Word addr) const {
     if (stack.inSegment(addr)) {
         return stack[addr];
     }
-    if (heap.inSegment(addr)) {
-        return heap[addr];
-    }
     if (text.inSegment(addr)) {
         return text[addr];
     }
@@ -261,9 +235,6 @@ Byte Memory::operator[](const Word addr) const {
 Byte& Memory::operator[](const Word addr) {
     if (stack.inSegment(addr)) {
         return stack[addr];
-    }
-    if (heap.inSegment(addr)) {
-        return heap[addr];
     }
     if (text.inSegment(addr)) {
         return text[addr];
@@ -296,7 +267,6 @@ void Memory::debugStack(const int size) {
 
 void Memory::reset() const {
     stack.reset();
-    heap.reset();
     text.reset();
     data.reset();
 }
