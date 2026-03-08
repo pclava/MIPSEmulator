@@ -2,6 +2,7 @@
 #define MIPS_PROC_UTILS_H
 #include <fstream>
 #include <iostream>
+#include <cstdint>
 
 // bunch of random stuff i couldn't put elsewhere
 
