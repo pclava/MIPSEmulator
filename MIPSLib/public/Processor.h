@@ -17,7 +17,6 @@ struct MIPS::CPU {
 
     OPHandler opcode_table[64]{};
     OPHandler funct_table[64]{};
-    OPHandler spec2_table[64]{};
 
     System system; // contains file streams for input and output
 
@@ -44,7 +43,7 @@ struct MIPS::CPU {
     // Sets 'exit' to the code and throws a runtime error to be caught be the main program
     void terminate(unsigned char code);
 
-    void raise_exception(ExceptionCode exception);
+    void raise_exception(ExceptionCode exception, Instruction instr);
 
     // Returns program entry
     void load_executable(const std::string& path, const int argc, char **argv, Memory &mem);

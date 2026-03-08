@@ -61,7 +61,7 @@ TEST_F(ProcessorTest, CanDecode) {
 TEST_F(ProcessorTest, ExceptionHandlerReturnsControl) {
     // test if after a non-fatal exception, control is returned to cpu at the following instruction
     cpu.PC.set(0x324); // exception occured at 324
-    EXPECT_NO_THROW(cpu.raise_exception(INTERRUPT));
+    EXPECT_NO_THROW(cpu.raise_exception(INTERRUPT, CPU::Decode(0)));
     EXPECT_EQ(cpu.newPC, 0x328);
     EXPECT_EQ(cpu.c0->cause.read(), 0);
     EXPECT_EQ(cpu.c0->status.read() & 1, 1); // if last bit is 1

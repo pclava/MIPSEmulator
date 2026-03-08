@@ -26,16 +26,17 @@ enum SyscallCode {
     SYSCALL_PRINT_CHAR,
     SYSCALL_READ_CHAR,
     SYSCALL_OPEN_FILE,
-    SYSCALL_READ_FILE, // not supported; ignored
-    SYSCALL_WRITE_FILE, // not supported; ignored
+    SYSCALL_READ_FILE,
+    SYSCALL_WRITE_FILE,
     SYSCALL_CLOSE_FILE,
     SYSCALL_EXIT2, // 17
     // END SPIM SYSCALLS
 
     // FOLLOWING SYSCALLS ARE MY ADDITIONS
-    SYSCALL_PRINT_HEX = 20,      // 20
-    SYSCALL_PRINT_BIN,           // 21
-    SYSCALL_PRINT_UNSIGNED,      // 22
+    SYSCALL_PRINT_HEX = 20,     // 20
+    SYSCALL_PRINT_BIN,          // 21
+    SYSCALL_PRINT_UNSIGNED,     // 22
+    SYSCALL_BRK,                // 23
 
 };
 
@@ -68,4 +69,5 @@ bool sys_close_file(CPU &, Memory &);
 bool sys_exit2(CPU &, Memory &);
 bool sys_print_hex(CPU &, Memory &);
 bool sys_print_unsigned(CPU &, Memory &);
+bool sys_brk(CPU &, Memory &);
 #endif //MIPS_SYSCALL_H

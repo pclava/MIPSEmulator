@@ -26,6 +26,10 @@ protected:
 
 #define R(x) cpu.RF[x]
 
+#define EXPECT_FAIL(machine_code) \
+    EXPECT_THROW(cpu.Execute(mem, CPU::Decode(machine_code)), std::runtime_error); \
+    EXPECT_EQ(cpu.exit, 255);
+
 TEST_F(SyscallTest, CanPrintInt) {
     s32 num = -1412567278;
     // Write integer to a register
@@ -259,4 +263,39 @@ TEST_F(SyscallTest, CanWriteFile) {
         EXPECT_EQ(expected[i], real[i]);
     }
     fclose(f);
+}
+
+TEST_F(SyscallTest, CanUseHeap) {
+    EXPECT_EQ(mem.heapAddress, HEAP_START);
+    // Allocate small amount of memory
+    R(2) = 9;   // sys sbrk
+    R(4) = 16;  // 16 bytes
+    cpu.Execute(mem, CPU::Decode(0xc));
+    EXPECT_EQ(mem.heapAddress, HEAP_START+16);
+    EXPECT_EQ(R(2), HEAP_START);
+
+    R(8) = R(2);    // save pointer
+
+    // Free that memory
+    R(2) = 23;      // sys brk
+    R(4) = R(8);
+    cpu.Execute(mem, CPU::Decode(0xc));
+    EXPECT_EQ(mem.heapAddress, HEAP_START);
+
+    // Allocate large block
+    R(2) = 9;
+    R(4) = static_cast<s32>(DATA_LIMIT - HEAP_START); // one word less than the max
+    cpu.Execute(mem, CPU::Decode(0xc));
+    EXPECT_EQ(mem.heapAddress, DATA_LIMIT+1);
+    EXPECT_EQ(R(2), HEAP_START);
+
+    // Allocate one more, expect failure
+    R(2) = 9;
+    R(4) = 1;
+    EXPECT_FAIL(cpu.Execute(mem, CPU::Decode(0xc)));
+
+    // Try setting program break outside of heap
+    R(2) = 23;
+    R(4) = 0x00400000;
+    EXPECT_FAIL(cpu.Execute(mem, CPU::Decode(0xc)));
 }

@@ -30,5 +30,10 @@ The emulator expects an executable and, optionally, arguments for the `main` fun
 
 `$ ./MIPSEmulator <executable> <arg1, ...>`
 
+## Notes
+The emulator is little-endian.
+
+The list of supported instructions and their opcodes can be found in `InstructionSet.cpp`.
+
 ---
 Every line of code in this repository was written by a human.

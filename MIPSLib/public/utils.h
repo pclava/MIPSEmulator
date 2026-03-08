@@ -3,21 +3,23 @@
 #include <fstream>
 #include <iostream>
 
-// bunch of randum stuff i couldn't put elsewhere
+// bunch of random stuff i couldn't put elsewhere
 
 namespace MIPS {
-    using Byte = unsigned char;
-    using Half = unsigned short;
-    using Word = unsigned int;
-    using u32 = unsigned int;
-    using s32 = signed int;
+    using Byte = uint8_t;
+    using Half = uint16_t;
+    using Word = uint32_t;
+    using u32 = uint32_t;
+    using s32 = int32_t;
 
     enum ExceptionCode {
         INTERRUPT = 0,
         ADDRESS_ERROR_EXCEPTION_LOAD = 4,
         ADDRESS_ERROR_EXCEPTION_STORE = 5,
         SYSCALL_EXCEPTION = 8,
+        BREAKPOINT_EXCEPTION = 9,
         ARITHMETIC_OVERFLOW_EXCEPTION = 12,
+        TRAP_EXCEPTION = 13,
     };
 
     struct FileHeader {
@@ -28,14 +30,21 @@ namespace MIPS {
 
     static constexpr size_t BLOCK_SIZE = 4096; // Number of bytes per memory block
 
-    inline Word STACK_START = 0x7ff00000; // 1 MiB stack memory
+    /*
+     * NOTE:
+     * the real MIPS stack goes from 0x10040000 to 0x7fffffff
+     * the real MIPS text segment goes from 0x00400000 to 0x0fffffff
+     *
+     * the emulator only simulates 4 Mb of these
+     */
+    inline Word STACK_START = 0x7fc00000; // 4 Mb stack memory
     inline Word STACK_LIMIT = 0x7fffffff;
-    inline Word HEAP_START =  0x10080000; // 1 MiB heap memory
-    inline Word HEAP_LIMIT =  0x1017ffff;
-    inline Word DATA_START =  0x10000000; // 1 MiB data memory
-    inline Word DATA_LIMIT =  0x100fffff;
-    inline Word TEXT_START =  0x00400000; // 1 MiB text memory
-    inline Word TEXT_LIMIT =  0x004fffff;
+    inline Word DATA_START =  0x10000000; // 4 Mb data memory
+    inline Word DATA_LIMIT =  0x103fffff;
+    inline Word TEXT_START =  0x00400000; // 4 Mb text memory
+    inline Word TEXT_LIMIT =  0x007fffff;
+
+    inline Word HEAP_START =  0x10080000; // starting heap pointer (heap can go below, down to DATA_START)
 
     struct Register;
     struct RegisterFile;

@@ -50,8 +50,10 @@ bool do_syscall(CPU &cpu, Memory &mem) {
             return sys_print_hex(cpu, mem);
         case SYSCALL_PRINT_UNSIGNED:
             return sys_print_unsigned(cpu, mem);
+        case SYSCALL_BRK:
+            return sys_brk(cpu, mem);
         default:
-            cpu.raise_exception(SYSCALL_EXCEPTION);
+            cpu.raise_exception(SYSCALL_EXCEPTION, Instruction::decode_instr(0xc));
             return false;
     }
 }
@@ -80,7 +82,7 @@ bool sys_print_str(CPU &cpu, Memory &mem) {
         cpu.system.out << str << std::flush;
     } catch (const std::out_of_range&) {
         cpu.c0->vaddr.set(static_cast<s32>(addr+i));
-        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD);
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0xc));
         return false;
     }
 
@@ -116,13 +118,29 @@ bool sys_read_str(CPU &cpu, Memory &mem) {
         }
     } catch (const std::out_of_range&) {
         cpu.c0->vaddr.set(static_cast<s32>(addr+i));
-        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE);
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, Instruction::decode_instr(0xc));
         return false;
     }
     return true;
 }
 
-bool sys_sbrk(CPU &, Memory &) {return true;} // Not (yet) implemented
+// v0 = 9 (return address of allocated memory), a0 = number of bytes to allocate
+bool sys_sbrk(CPU &cpu, Memory &mem) {
+    Word ret = mem.heapAddress;
+    // Move up program break
+    Word bytes = static_cast<Word>(A0);
+    Word new_pbrk = mem.heapAddress + bytes;
+    if (new_pbrk % 4 != 0) new_pbrk += 4 - new_pbrk % 4;
+    // note heapAddress points to the first unallocated byte. if the whole heap is allocated,
+    // this is HEAP_LIMIT+1
+    if (new_pbrk > DATA_LIMIT+1) {
+        cpu.raise_exception(SYSCALL_EXCEPTION, Instruction::decode_instr(0xc));
+        return false;
+    }
+    mem.heapAddress = new_pbrk;
+    V0 = static_cast<s32>(ret);
+    return true;
+}
 
 // v0 = 10
 bool sys_exit(CPU &cpu, Memory &) {
@@ -162,7 +180,7 @@ bool sys_open_file(CPU &cpu, Memory &mem) {
         }
     }  catch (const std::out_of_range&) {
         cpu.c0->vaddr.set(static_cast<s32>(addr-1));
-        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD);
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0xc));
         return false;
     }
 
@@ -203,7 +221,7 @@ bool sys_read_file(CPU &cpu, Memory &mem) {
         }
     }  catch (const std::out_of_range&) {
         cpu.c0->vaddr.set(static_cast<s32>(addr+i));
-        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE);
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, Instruction::decode_instr(0xc));
         return false;
     }
 
@@ -228,7 +246,7 @@ bool sys_write_file(CPU &cpu, Memory &mem) {
         }
     }  catch (const std::out_of_range&) {
         cpu.c0->vaddr.set(static_cast<s32>(addr+i));
-        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD);
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0xc));
         return false;
     }
     V0 = static_cast<s32>(i);
@@ -258,5 +276,16 @@ bool sys_print_hex(CPU &cpu, Memory &) {
 // v0 = 22, a0 = number
 bool sys_print_unsigned(CPU &cpu, Memory &) {
     cpu.system.out << static_cast<u32>(A0) << std::flush;
+    return true;
+}
+
+// v0 = 23, a0 = address
+bool sys_brk(CPU &cpu, Memory &mem) {
+    Word addr = static_cast<Word>(A0);
+    if (addr < DATA_START || addr > DATA_LIMIT) {
+        cpu.raise_exception(SYSCALL_EXCEPTION, Instruction::decode_instr(0xc));
+        return false;
+    }
+    mem.heapAddress = addr;
     return true;
 }
