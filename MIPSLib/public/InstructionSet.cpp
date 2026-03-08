@@ -46,10 +46,15 @@ void init_opcode_table(OPHandler (&op)[64], OPHandler (&funct)[64]) {
     funct[0x06] = op_srlv;
     funct[0x07] = op_srav;
     funct[0x08] = op_jr;
+    funct[0x09] = op_jalr;
+    funct[0x0a] = op_movz;
+    funct[0x0b] = op_movn;
     funct[0x0c] = op_syscall;
     funct[0x0d] = op_break;
     funct[0x10] = op_mfhi;
+    funct[0x11] = op_mthi;
     funct[0x12] = op_mflo;
+    funct[0x13] = op_mtlo;
     funct[0x18] = op_mult;
     funct[0x19] = op_multu;
     funct[0x1a] = op_div;
@@ -138,6 +143,12 @@ bool op_jr(CPU &cpu, Memory &, const Instruction instruction) {
     return true;
 }
 
+bool op_jalr(CPU &cpu, Memory &, const Instruction instruction) {
+    cpu.RF[31] = cpu.PC.read() + 4;
+    cpu.queue_pc_update(R(rs));
+    return true;
+}
+
 bool op_nor(CPU &cpu, Memory &, const Instruction instruction) {
     R(rd) = ~(R(rs) | R(rt));
     return true;
@@ -205,6 +216,16 @@ bool op_divu(CPU &cpu, Memory &, const Instruction instruction) {
 
 bool op_mfhi(CPU &cpu, Memory &, const Instruction instruction) {
     R(rd) = cpu.HI.read();
+    return true;
+}
+
+bool op_mthi(CPU &cpu, Memory &, const Instruction instruction) {
+    cpu.HI.set(R(rs));
+    return true;
+}
+
+bool op_mtlo(CPU &cpu, Memory &, const Instruction instruction) {
+    cpu.LO.set(R(rs));
     return true;
 }
 
@@ -308,6 +329,16 @@ bool op_seleqz(CPU &cpu, Memory &, const Instruction instruction) {
 
 bool op_selnez(CPU &cpu, Memory &, const Instruction instruction) {
     R(rd) = R(rt) ? R(rs) : 0;
+    return true;
+}
+
+bool op_movz(CPU &cpu, Memory &, const Instruction instruction) {
+    if (R(rt) == 0) R(rd) = R(rs);
+    return true;
+}
+
+bool op_movn(CPU &cpu, Memory &, const Instruction instruction) {
+    if (R(rt) != 0) R(rd) = R(rs);
     return true;
 }
 

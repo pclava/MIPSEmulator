@@ -47,6 +47,7 @@ bool op_add(CPU&, Memory&, Instruction);
 bool op_addu(CPU&, Memory&, Instruction);
 bool op_and(CPU&, Memory&, Instruction);
 bool op_jr(CPU&, Memory&, Instruction);
+bool op_jalr(CPU&, Memory&, Instruction);
 bool op_nor(CPU&, Memory&, Instruction);
 bool op_or(CPU&, Memory&, Instruction);
 bool op_slt(CPU&, Memory&, Instruction);
@@ -62,6 +63,8 @@ bool op_div(CPU&, Memory&, Instruction);
 bool op_divu(CPU&, Memory&, Instruction);
 bool op_mfhi(CPU&, Memory&, Instruction);
 bool op_mflo(CPU&, Memory&, Instruction);
+bool op_mthi(CPU&, Memory&, Instruction);
+bool op_mtlo(CPU&, Memory&, Instruction);
 bool op_mult(CPU&, Memory&, Instruction);
 bool op_multu(CPU&, Memory&, Instruction);
 bool op_sra(CPU&, Memory&, Instruction);
@@ -74,6 +77,8 @@ bool op_teq(CPU&, Memory&, Instruction);
 bool op_tne(CPU&, Memory&, Instruction);
 bool op_seleqz(CPU&, Memory&, Instruction);
 bool op_selnez(CPU&, Memory&, Instruction);
+bool op_movz(CPU&, Memory&, Instruction);
+bool op_movn(CPU&, Memory&, Instruction);
 
 /* === I-TYPE === */
 bool op_addi(CPU&, Memory&, Instruction);
