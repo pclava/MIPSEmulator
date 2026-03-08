@@ -591,7 +591,7 @@ bool op_lwl(CPU &cpu, Memory &mem, const Instruction instruction) {
     // Preserve LSBs of rt
     // j+8 represents number of bits that were not read from memory
     // extract the lower j+8 bits of rt and OR with value
-    R(rt) = toS32(value) | (R(rt) & (1 << (j+8))-1);
+    R(rt) = toS32(value) | (R(rt) & ((1 << (j+8))-1));
     return true;
 }
 
