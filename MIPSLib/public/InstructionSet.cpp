@@ -144,7 +144,7 @@ bool op_jr(CPU &cpu, Memory &, const Instruction instruction) {
 }
 
 bool op_jalr(CPU &cpu, Memory &, const Instruction instruction) {
-    cpu.RF[31] = cpu.PC.read() + 4;
+    R(rd) = cpu.PC.read() + 4;
     cpu.queue_pc_update(R(rs));
     return true;
 }

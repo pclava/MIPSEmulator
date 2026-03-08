@@ -622,6 +622,44 @@ TEST_F(InstructionTest, TestJal) {
     EXPECT_EQ(R(31), 0x00400ac0); // $ra should be set to original PC+4
 }
 
+TEST_F(InstructionTest, TestJalr) {
+    cpu.PC.set(0x00400abc);
+    R(8) = 0x00411111;
+    R(9) = 0x2315;
+    Word code = 0x01004809; // jalr t1, t0
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(cpu.PC.read(), 0x00411111);
+    EXPECT_EQ(R(9), 0x00400ac0);
+}
+
+TEST_F(InstructionTest, TestConditionalMoves) {
+    R(8) = 87623;
+    R(9) = 0;
+    R(10) = 43268;
+    Word code = 0x0109500A; // movz t2, t0, t1
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(10), 87623);
+
+    R(8) = 9123;
+    R(9) = 0xabc;
+    R(10) = 145167;
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(10), 145167);
+
+    R(8) = 87623;
+    R(9) = 0;
+    R(10) = 43268;
+    code = 0x109500B;
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(10), 43268);
+
+    R(8) = 9123;
+    R(9) = 0xabc;
+    R(10) = 145167;
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(10), 9123);
+}
+
 TEST_F(InstructionTest, TestBreak) {
     const Word code = 0x0d;
     EXPECT_FAIL(code);
@@ -719,4 +757,16 @@ TEST_F(InstructionTest, TestSel) {
     code = 0x012A4037; // selnez t0, t1, t2
     cpu.Execute(mem, CPU::Decode(code));
     EXPECT_EQ(R(8), 0);
+}
+
+TEST_F(InstructionTest, TestMthiMtlo) {
+    R(8) = 8415;
+    Word code = 0x01000011;
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(cpu.HI.read(), 8415);
+
+    R(8) = 423;
+    code = 0x01000013;
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(cpu.LO.read(), 423);
 }
