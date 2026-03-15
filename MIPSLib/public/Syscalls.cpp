@@ -190,11 +190,13 @@ bool sys_open_file(CPU &cpu, Memory &mem) {
     switch (flag) {
         case 0: // read
             f = fopen(path.c_str(), "rb");
-            ret = fileno(f);
+            if (f == nullptr) ret = -1;
+            else ret = fileno(f);
             break;
         case 1: // write
             f = fopen(path.c_str(), "wb");
-            ret = fileno(f);
+            if (f == nullptr) ret = -1;
+            else ret = fileno(f);
             break;
         default: // unrecognized
             ret = -1;
