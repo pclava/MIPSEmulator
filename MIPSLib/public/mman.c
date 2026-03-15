@@ -15,6 +15,7 @@
 
 static int __map_mman_error(const DWORD err, const int deferr)
 {
+    (void)deferr; // suppress unused warning
     if (err == 0)
         return 0;
     //TODO: implement
@@ -137,6 +138,7 @@ void* mmap(void *addr, size_t len, int prot, int flags, int fildes, OffsetType o
 
 int munmap(void *addr, size_t len)
 {
+    (void)len;  // suppress unused warning
     if (UnmapViewOfFile(addr))
         return 0;
         
@@ -160,6 +162,7 @@ int _mprotect(void *addr, size_t len, int prot)
 
 int msync(void *addr, size_t len, int flags)
 {
+    (void)flags;    // suppress unused warning
     if (FlushViewOfFile(addr, len))
         return 0;
     
