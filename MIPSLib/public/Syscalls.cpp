@@ -216,7 +216,7 @@ bool sys_read_file(CPU &cpu, Memory &mem) {
             Byte c[1];
             ssize_t bytes_read = read(fd, c, 1);
             if (bytes_read <= 0) {
-                if (bytes_read == -1) i = -1;
+                i = -1;
                 break;
             }
             mem.writeByte(addr+i, c[0]);
