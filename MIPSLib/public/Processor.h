@@ -46,7 +46,7 @@ struct MIPS::CPU {
     void raise_exception(ExceptionCode exception, Instruction instr);
 
     // Returns program entry
-    void load_executable(const std::string& path, const int argc, char **argv, Memory &mem);
+    void load_executable(const char* path, const int argc, char **argv, Memory &mem);
 };
 
 #endif //MIPS_PROC_PROCESSOR_H

@@ -190,11 +190,13 @@ bool sys_open_file(CPU &cpu, Memory &mem) {
     switch (flag) {
         case 0: // read
             f = fopen(path.c_str(), "rb");
-            ret = fileno(f);
+            if (f == nullptr) ret = -1;
+            else ret = fileno(f);
             break;
         case 1: // write
             f = fopen(path.c_str(), "wb");
-            ret = fileno(f);
+            if (f == nullptr) ret = -1;
+            else ret = fileno(f);
             break;
         default: // unrecognized
             ret = -1;
@@ -205,6 +207,7 @@ bool sys_open_file(CPU &cpu, Memory &mem) {
 
 // v0 = 14 (return bytes read), a0 = filedes, a1 = input buffer, a2 = bytes to read
 bool sys_read_file(CPU &cpu, Memory &mem) {
+    // TODO: this doesn't behave exactly correctly
     s32 fd = A0;
     s32 addr = A1;
     u32 bytes = static_cast<u32>(A2);
@@ -214,7 +217,6 @@ bool sys_read_file(CPU &cpu, Memory &mem) {
             Byte c[1];
             ssize_t bytes_read = read(fd, c, 1);
             if (bytes_read <= 0) {
-                if (bytes_read == -1) i = -1;
                 break;
             }
             mem.writeByte(addr+i, c[0]);
