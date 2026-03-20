@@ -23,12 +23,6 @@ namespace MIPS {
         TRAP_EXCEPTION = 13,
     };
 
-    struct FileHeader {
-        Word text_size;
-        Word data_size;
-        Word program_entry;
-    };
-
     static constexpr size_t BLOCK_SIZE = 4096; // Number of bytes per memory block
 
     /*
