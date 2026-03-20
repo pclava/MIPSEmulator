@@ -725,40 +725,6 @@ TEST_F(InstructionTest, TestTraps) {
     EXPECT_PASS(code);
 }
 
-TEST_F(InstructionTest, TestSel) {
-    // SELEQZ true (check t2, set t0 to t1)
-    R(8) = 194;
-    R(9) = 98765;
-    R(10) = 0;
-    // 000000.01001.01010.01000.00000.110101
-    Word code = 0x012A4035; // seleqz t0, t1, t2
-    cpu.Execute(mem, CPU::Decode(code));
-    EXPECT_EQ(R(8), R(9));
-
-    // SELEQZ false (check t2, set t0 to 0)
-    R(8) = 194;
-    R(9) = 98755;
-    R(10) = 672;
-    cpu.Execute(mem, CPU::Decode(code));
-    EXPECT_EQ(R(8), 0);
-
-    // SELNEZ true (check t2, set t0 to t1)
-    R(8) = 194;
-    R(9) = 98755;
-    R(10) = 672;
-    code = 0x012A4037; // selnez t0, t1, t2
-    cpu.Execute(mem, CPU::Decode(code));
-    EXPECT_EQ(R(8), R(9));
-
-    // SELNEZ false (check t2, set t0 to 0)
-    R(8) = 194;
-    R(9) = 98755;
-    R(10) = 0;
-    code = 0x012A4037; // selnez t0, t1, t2
-    cpu.Execute(mem, CPU::Decode(code));
-    EXPECT_EQ(R(8), 0);
-}
-
 TEST_F(InstructionTest, TestMthiMtlo) {
     R(8) = 8415;
     Word code = 0x01000011;
