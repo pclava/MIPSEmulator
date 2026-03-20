@@ -25,6 +25,7 @@ void init_opcode_table(OPHandler (&op)[64], OPHandler (&funct)[64]) {
     op[0x0b] = op_sltiu;
     op[0x0c] = op_andi;
     op[0x0d] = op_ori;
+    op[0x0e] = op_xori;
     op[0x0f] = op_lui;
     op[0x20] = op_lb;
     op[0x21] = op_lh;
@@ -74,9 +75,7 @@ void init_opcode_table(OPHandler (&op)[64], OPHandler (&funct)[64]) {
     funct[0x32] = op_tlt;
     funct[0x33] = op_tltu;
     funct[0x34] = op_teq;
-    funct[0x35] = op_seleqz;
     funct[0x36] = op_tne;
-    funct[0x37] = op_selnez;
 }
 
 s32 signExtend(const unsigned short imm) {
@@ -322,16 +321,6 @@ bool op_tne(CPU &cpu, Memory &, const Instruction instruction) {
     return true;
 }
 
-bool op_seleqz(CPU &cpu, Memory &, const Instruction instruction) {
-    R(rd) = R(rt) ? 0 : R(rs);
-    return true;
-}
-
-bool op_selnez(CPU &cpu, Memory &, const Instruction instruction) {
-    R(rd) = R(rt) ? R(rs) : 0;
-    return true;
-}
-
 bool op_movz(CPU &cpu, Memory &, const Instruction instruction) {
     if (R(rt) == 0) R(rd) = R(rs);
     return true;
@@ -430,6 +419,12 @@ bool op_lw(CPU &cpu, Memory &mem, const Instruction instruction) {
 bool op_ori(CPU &cpu, Memory &, const Instruction instruction) {
     const s32 imm = zeroExtend(instruction.imm);
     R(rt) = R(rs) | imm;
+    return true;
+}
+
+bool op_xori(CPU &cpu, Memory &, const Instruction instruction) {
+    const s32 imm = zeroExtend(instruction.imm);
+    R(rt) = R(rs) ^ imm;
     return true;
 }
 

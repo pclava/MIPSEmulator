@@ -75,8 +75,6 @@ bool op_tlt(CPU&, Memory&, Instruction);
 bool op_tltu(CPU&, Memory&, Instruction);
 bool op_teq(CPU&, Memory&, Instruction);
 bool op_tne(CPU&, Memory&, Instruction);
-bool op_seleqz(CPU&, Memory&, Instruction);
-bool op_selnez(CPU&, Memory&, Instruction);
 bool op_movz(CPU&, Memory&, Instruction);
 bool op_movn(CPU&, Memory&, Instruction);
 
@@ -91,6 +89,7 @@ bool op_bgtz(CPU&, Memory&, Instruction);
 bool op_lui(CPU&, Memory&, Instruction);
 bool op_lw(CPU&, Memory&, Instruction);
 bool op_ori(CPU&, Memory&, Instruction);
+bool op_xori(CPU&, Memory&, Instruction);
 bool op_slti(CPU&, Memory&, Instruction);
 bool op_sltiu(CPU&, Memory&, Instruction);
 bool op_sb(CPU&, Memory&, Instruction);
