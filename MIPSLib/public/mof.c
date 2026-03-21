@@ -12,6 +12,14 @@ uint8_t *mof_data(void *file, const struct mof_header *hdr) {
     return file + MOF_DTAOFF(hdr);
 }
 
+uint32_t *mof_ktext(void *file, const struct mof_header *hdr) {
+    return file + MOF_KTXTOFF(hdr);
+}
+
+uint8_t *mof_kdata(void *file, const struct mof_header *hdr) {
+    return file + MOF_KDTAOFF(hdr);
+}
+
 struct mof_relocation *mof_relocs(void *file, const struct mof_header *hdr) {
     return file + MOF_RELOFF(hdr);
 }

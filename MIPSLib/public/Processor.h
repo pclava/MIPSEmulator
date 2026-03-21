@@ -17,9 +17,11 @@ struct MIPS::CPU {
 
     OPHandler opcode_table[64]{};
     OPHandler funct_table[64]{};
+    OPHandler cop0_table[64]{};
 
     System system; // contains file streams for input and output
 
+    MODE mode = USER;
     unsigned char exit = 0; // exit code
 
     Coprocessor0 *c0;

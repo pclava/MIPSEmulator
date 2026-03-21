@@ -6,14 +6,14 @@
 #include <memory>
 
 /*
-* Memory is divided into 3 disjoint MemorySegments, each 4 Mb
+* Memory is divided into disjoint MemorySegments, each 1-4 Mb
 * Each MemorySegment is an array of pointers to MemoryBlocks
 * A MemoryBlock, when initialized, is an array of 4096 Bytes
 * The emulator only initializes a MemoryBlock when an address
 * inside it is referenced, in order to be efficient with space.
 * A 4 Mb MemorySegment has 1024 blocks. Therefore, a program
 * that does not use any emulated memory will only
-* use up enough memory to allocate 3 arrays of 1024 pointers,
+* use up enough memory to allocate the arrays of segment pointers,
 * and enough 4096-byte chunks to store the program's contents
 * in the text segment.
 */
@@ -83,10 +83,16 @@ struct MIPS::MemorySegment {
 
 struct MIPS::Memory {
     MemorySegment stack;
-    MemorySegment data;
-    MemorySegment text;
+    MemorySegment udata;
+    MemorySegment utext;
+    MemorySegment ktext;
+    MemorySegment kdata;
 
-    Word heapAddress; // address of first unallocated byte
+    // Pointers to the current text and data segments (user or kernel)
+    MemorySegment *data_current;
+    MemorySegment *text_current;
+
+    Word heapAddress; // address of first unallocated byte in heap
 
     Memory();
 

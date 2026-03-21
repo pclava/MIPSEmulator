@@ -123,19 +123,23 @@ void MemorySegment::reset() const {
 
 Memory::Memory() :
     stack(STACK_START, STACK_LIMIT),
-    data(DATA_START, DATA_LIMIT),
-    text(TEXT_START, TEXT_LIMIT),
+    udata(DATA_START, DATA_LIMIT),
+    utext(TEXT_START, TEXT_LIMIT),
+    ktext(KTEXT_START, KTEXT_LIMIT),
+    kdata(KDATA_START, KDATA_LIMIT),
+    data_current(&udata),
+    text_current(&utext),
     heapAddress(HEAP_START) {}
 
 Byte Memory::readByte(const Word addr) {
     if (stack.inSegment(addr)) {
         return stack.readByte(addr);
     }
-    if (text.inSegment(addr)) {
-        return text.readByte(addr);
+    if (text_current->inSegment(addr)) {
+        return utext.readByte(addr);
     }
-    if (data.inSegment(addr)) {
-        return data.readByte(addr);
+    if (data_current->inSegment(addr)) {
+        return udata.readByte(addr);
     }
     throw std::out_of_range("address out of range\n");
 }
@@ -145,12 +149,12 @@ void Memory::readN(const Word addr, const Word num_bytes, Byte *buf) {
         stack.readN(addr, num_bytes, buf);
         return;
     }
-    if (text.inSegment(addr)) {
-        text.readN(addr, num_bytes, buf);
+    if (text_current->inSegment(addr)) {
+        text_current->readN(addr, num_bytes, buf);
         return;
     }
-    if (data.inSegment(addr)) {
-        data.readN(addr, num_bytes, buf);
+    if (data_current->inSegment(addr)) {
+        data_current->readN(addr, num_bytes, buf);
         return;
     }
     throw std::out_of_range("address out of range\n");
@@ -161,11 +165,11 @@ Word Memory::readWord(const Word addr) {
     if (stack.inSegment(addr)) {
         return stack.readWord(addr);
     }
-    if (text.inSegment(addr)) {
-        return text.readWord(addr);
+    if (text_current->inSegment(addr)) {
+        return text_current->readWord(addr);
     }
-    if (data.inSegment(addr)) {
-        return data.readWord(addr);
+    if (data_current->inSegment(addr)) {
+        return data_current->readWord(addr);
     }
     throw std::out_of_range("address out of range\n");
 }
@@ -175,12 +179,12 @@ void Memory::writeByte(const Word addr, Byte byte) {
         stack.writeByte(addr, byte);
         return;
     }
-    if (text.inSegment(addr)) {
-        text.writeByte(addr, byte);
+    if (text_current->inSegment(addr)) {
+        text_current->writeByte(addr, byte);
         return;
     }
-    if (data.inSegment(addr)) {
-        data.writeByte(addr, byte);
+    if (data_current->inSegment(addr)) {
+        data_current->writeByte(addr, byte);
         return;
     }
     throw std::out_of_range("address out of range\n");
@@ -191,12 +195,12 @@ void Memory::writeN(const Word addr, const Word num_bytes, const Byte *buf) {
         stack.writeN(addr, num_bytes, buf);
         return;
     }
-    if (text.inSegment(addr)) {
-        text.writeN(addr, num_bytes, buf);
+    if (text_current->inSegment(addr)) {
+        text_current->writeN(addr, num_bytes, buf);
         return;
     }
-    if (data.inSegment(addr)) {
-        data.writeN(addr, num_bytes, buf);
+    if (data_current->inSegment(addr)) {
+        data_current->writeN(addr, num_bytes, buf);
         return;
     }
     throw std::out_of_range("address out of range\n");
@@ -207,12 +211,12 @@ void Memory::writeWord(const Word addr, Word word) {
         stack.writeWord(addr, word);
         return;
     }
-    if (text.inSegment(addr)) {
-        text.writeWord(addr, word);
+    if (text_current->inSegment(addr)) {
+        text_current->writeWord(addr, word);
         return;
     }
-    if (data.inSegment(addr)) {
-        data.writeWord(addr, word);
+    if (data_current->inSegment(addr)) {
+        data_current->writeWord(addr, word);
         return;
     }
     throw std::out_of_range("address out of range\n");
@@ -223,11 +227,11 @@ Byte Memory::operator[](const Word addr) const {
     if (stack.inSegment(addr)) {
         return stack[addr];
     }
-    if (text.inSegment(addr)) {
-        return text[addr];
+    if (text_current->inSegment(addr)) {
+        return (*text_current)[addr];
     }
-    if (data.inSegment(addr)) {
-        return data[addr];
+    if (data_current->inSegment(addr)) {
+        return (*data_current)[addr];
     }
     throw std::out_of_range("address out of range\n");
 }
@@ -236,24 +240,24 @@ Byte& Memory::operator[](const Word addr) {
     if (stack.inSegment(addr)) {
         return stack[addr];
     }
-    if (text.inSegment(addr)) {
-        return text[addr];
+    if (text_current->inSegment(addr)) {
+        return (*text_current)[addr];
     }
-    if (data.inSegment(addr)) {
-        return data[addr];
+    if (data_current->inSegment(addr)) {
+        return (*data_current)[addr];
     }
     throw std::out_of_range("address out of range\n");
 }
 
 void Memory::debugText(const int size) {
     for (int i = 0; i < size; i++) {
-        printf("0x%.8x\n", text.readWord(TEXT_START+4*i));
+        printf("0x%.8x\n", utext.readWord(TEXT_START+4*i));
     }
 }
 
 void Memory::debugData(const int size) {
     for (int i = 0; i < size; i++) {
-        Byte b = data.readByte(DATA_START+0x10000+i);
+        Byte b = udata.readByte(DATA_START+0x10000+i);
         printf("%.8x: 0x%.2x (%c) \n", DATA_START+0x10000+i, b, b);
     }
 }
@@ -267,6 +271,6 @@ void Memory::debugStack(const int size) {
 
 void Memory::reset() const {
     stack.reset();
-    text.reset();
-    data.reset();
+    utext.reset();
+    udata.reset();
 }
