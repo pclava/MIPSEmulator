@@ -30,13 +30,13 @@ void CPU::queue_pc_update(Word addr) {
     newPC = addr;
 }
 
-Word CPU::Fetch(Memory &MEM) {
+Word CPU::Fetch(Memory &mem) {
     Word ret;
     try {
-        ret = MEM.readWord(PC.read());
+        ret = mem.readWord(PC.read());
     } catch (const std::out_of_range&) {
         c0.vaddr.set(PC.read());
-        raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0));
+        raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0), mem);
         return 0;
     }
     newPC = PC.read()+4;
@@ -60,12 +60,27 @@ void CPU::terminate(unsigned char code) {
     throw std::runtime_error("CPU terminated");
 }
 
-void CPU::raise_exception(const ExceptionCode exception, const Instruction instr) {
-    c0.set_cause(exception); // set the cause register
-    c0.epc.set(PC.read()); // set epc to instruction that caused exception
-    c0.status.set(c0.status.read() | 0b10); // set status bit 1
-    c0.bad.set((instr.opcode << 26) | (instr.addr)); // recover bad instruction
-    if (c0.handle_exception(*this) == 0) terminate(255);
+void CPU::raise_exception(const ExceptionCode exception, const Instruction instr, Memory &mem) {
+    // Ignore interrupts if needed
+    if (exception == INTERRUPT && c0.get_interrupts() == false) return;
+
+    // Power on processor, if needed
+    powered = true;
+
+    // Set processor mode
+    if (set_mode(KERNEL, mem) == false) {
+        // if already in kernel mode, terminate fatally
+        terminate(255);
+    }
+
+    // Note: the default exception handler does everything at once. at the end of this function, the exception is fully handled.
+    // A custom exception handler only jumps to EXC_VECTOR. the exception will not be handled by the end of this function.
+
+    // Jump to exception handler, terminate if fatal
+    if (c0.raise_exception(*this, exception, instr) == 0) terminate(255);
+
+    // Check if mode changed (if c0 default exception handler returned control)
+    if (c0.get_mode() == USER) set_mode(USER, mem); // necessary to reflect the change in memory
 }
 
 // Returns program entry
@@ -81,7 +96,7 @@ void load_file(const char *path, mof_file &file) {
     // Read header
     if (mof_read_header(f, &file.hdr) == 0) {
         fclose(f);
-        throw std::runtime_error("Could not read file header");
+        throw std::runtime_error("Couldx not read file header");
     }
     if (!mof_is_valid(&file.hdr)) {
         fclose(f);
@@ -121,10 +136,9 @@ void load_text(Memory &mem, const mof_file &file) {
 
 void load_ktext(Memory &mem, const mof_file &file) {
     for (u32 i = 0; i < file.hdr.ktext/4; i++) { // Text segment
-        mem.writeWord(KTEXT_START+4*i, file.ktext[i]);
+        mem.writeWord(EXC_VECTOR+4*i, file.ktext[i]);
     }
 }
-
 
 void load_data(Memory &mem, const mof_file &file) {
     for (u32 i = 0; i < file.hdr.data; i++) { // Data segment
@@ -134,7 +148,7 @@ void load_data(Memory &mem, const mof_file &file) {
 
 void load_kdata(Memory &mem, const mof_file &file) {
     for (u32 i = 0; i < file.hdr.kdata; i++) { // Data segment
-        mem.writeByte(KDATA_START+i, file.kdata[i]); // begin writing at 0x10010000
+        mem.writeByte(KDATA_START+i, file.kdata[i]);
     }
 }
 
@@ -181,6 +195,9 @@ void CPU::load_executable(const char *path, const int argc, char **argv, Memory 
     mof_file file{};
     load_file(path, file);
 
+    // If the ktext is empty, inform coprocessor
+    c0.has_handler = file.hdr.ktext != 0;
+
     // Load into processor
     set_pc_entry(file.hdr.entry);
     set_mode(USER, mem);
@@ -199,16 +216,15 @@ void CPU::load_executable(const char *path, const int argc, char **argv, Memory 
     }
 }
 
-bool CPU::set_mode(MODE new_mode, Memory &mem) {
-    MODE old_mode = mode;
-    mode = new_mode;
-    if (mode == USER) {
+bool CPU::set_mode(MODE new_mode, Memory &mem) const {
+    MODE old_mode = c0.set_mode(new_mode);
+    if (new_mode == USER) {
         mem.data_current = &mem.udata;
         mem.text_current = &mem.utext;
-    } else if (mode == KERNEL) {
+    } else if (new_mode == KERNEL) {
         mem.data_current = &mem.kdata;
         mem.text_current = &mem.ktext;
     }
 
-    return mode != old_mode;
+    return new_mode != old_mode;
 }

@@ -120,6 +120,8 @@ bool op_mfc0(CPU&, Memory&, Instruction);
 bool op_mtc0(CPU&, Memory&, Instruction);
 bool op_interrupts(CPU&, Memory&, Instruction);
 bool op_c0(CPU&, Memory&, Instruction);
+bool op_eret(CPU&, Memory&, Instruction);
+bool op_wait(CPU&, Memory&, Instruction);
 
 
 #endif //MIPS_INSTRUCTION_H

@@ -48,6 +48,7 @@ namespace MIPS {
     inline Word TEXT_START =  0x00400000; // 4 Mb text memory
     inline Word TEXT_LIMIT =  0x007fffff;
 
+    inline Word EXC_VECTOR = 0x80000180;  // Start of exception handler
     inline Word HEAP_START =  0x10080000; // starting heap pointer (heap can go below, down to DATA_START)
 
     struct Register;

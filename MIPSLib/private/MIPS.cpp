@@ -18,15 +18,17 @@ int main(int argc, char *argv[]) {
     // THIS IS WHERE THE MAGIC HAPPENS
     while (true) {
         try {
+            if (cpu.powered) {
+                // FETCH INSTRUCTION AT PROGRAM COUNTER
+                const Word machine_code = cpu.Fetch(mem);
 
-            // FETCH INSTRUCTION AT PROGRAM COUNTER
-            const Word machine_code = cpu.Fetch(mem);
+                // DECODE INSTRUCTION
+                const Instruction instr = CPU::Decode(machine_code);
 
-            // DECODE INSTRUCTION
-            const Instruction instr = CPU::Decode(machine_code);
-
-            // EXECUTE INSTRUCTION
-            cpu.Execute(mem, instr);
+                // EXECUTE INSTRUCTION
+                cpu.Execute(mem, instr);
+            }
+            // ISSUE INTERRUPTS
 
         } catch (std::runtime_error &) {
             // IF CPU TERMINATED, CATCH AND EXIT

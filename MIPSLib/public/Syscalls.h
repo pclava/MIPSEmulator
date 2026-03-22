@@ -37,6 +37,7 @@ enum SyscallCode {
     SYSCALL_PRINT_BIN,          // 21
     SYSCALL_PRINT_UNSIGNED,     // 22
     SYSCALL_BRK,                // 23
+    SYSCALL_HANDLE_EXCEPTION,   // 24 : used in an exception handler to request that the emulator handle the exception
 
 };
 
@@ -70,4 +71,5 @@ bool sys_exit2(CPU &, Memory &);
 bool sys_print_hex(CPU &, Memory &);
 bool sys_print_unsigned(CPU &, Memory &);
 bool sys_brk(CPU &, Memory &);
+bool sys_handle_exception(CPU &, Memory &);
 #endif //MIPS_SYSCALL_H

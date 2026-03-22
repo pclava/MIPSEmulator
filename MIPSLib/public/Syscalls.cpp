@@ -52,8 +52,10 @@ bool do_syscall(CPU &cpu, Memory &mem) {
             return sys_print_unsigned(cpu, mem);
         case SYSCALL_BRK:
             return sys_brk(cpu, mem);
+        case SYSCALL_HANDLE_EXCEPTION:
+            return sys_handle_exception(cpu, mem);
         default:
-            cpu.raise_exception(SYSCALL_EXCEPTION, Instruction::decode_instr(0xc));
+            cpu.raise_exception(SYSCALL_EXCEPTION, Instruction::decode_instr(0xc), mem);
             return false;
     }
 }
@@ -82,7 +84,7 @@ bool sys_print_str(CPU &cpu, Memory &mem) {
         cpu.system.out << str << std::flush;
     } catch (const std::out_of_range&) {
         cpu.c0.vaddr.set(static_cast<s32>(addr+i));
-        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0xc));
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0xc), mem);
         return false;
     }
 
@@ -118,7 +120,7 @@ bool sys_read_str(CPU &cpu, Memory &mem) {
         }
     } catch (const std::out_of_range&) {
         cpu.c0.vaddr.set(static_cast<s32>(addr+i));
-        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, Instruction::decode_instr(0xc));
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, Instruction::decode_instr(0xc), mem);
         return false;
     }
     return true;
@@ -134,7 +136,7 @@ bool sys_sbrk(CPU &cpu, Memory &mem) {
     // note heapAddress points to the first unallocated byte. if the whole heap is allocated,
     // this is HEAP_LIMIT+1
     if (new_pbrk > DATA_LIMIT+1) {
-        cpu.raise_exception(SYSCALL_EXCEPTION, Instruction::decode_instr(0xc));
+        cpu.raise_exception(SYSCALL_EXCEPTION, Instruction::decode_instr(0xc), mem);
         return false;
     }
     mem.heapAddress = new_pbrk;
@@ -180,7 +182,7 @@ bool sys_open_file(CPU &cpu, Memory &mem) {
         }
     }  catch (const std::out_of_range&) {
         cpu.c0.vaddr.set(static_cast<s32>(addr-1));
-        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0xc));
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0xc), mem);
         return false;
     }
 
@@ -223,7 +225,7 @@ bool sys_read_file(CPU &cpu, Memory &mem) {
         }
     }  catch (const std::out_of_range&) {
         cpu.c0.vaddr.set(static_cast<s32>(addr+i));
-        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, Instruction::decode_instr(0xc));
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, Instruction::decode_instr(0xc), mem);
         return false;
     }
 
@@ -248,7 +250,7 @@ bool sys_write_file(CPU &cpu, Memory &mem) {
         }
     }  catch (const std::out_of_range&) {
         cpu.c0.vaddr.set(static_cast<s32>(addr+i));
-        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0xc));
+        cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0xc), mem);
         return false;
     }
     V0 = static_cast<s32>(i);
@@ -285,9 +287,21 @@ bool sys_print_unsigned(CPU &cpu, Memory &) {
 bool sys_brk(CPU &cpu, Memory &mem) {
     Word addr = static_cast<Word>(A0);
     if (addr < DATA_START || addr > DATA_LIMIT) {
-        cpu.raise_exception(SYSCALL_EXCEPTION, Instruction::decode_instr(0xc));
+        cpu.raise_exception(SYSCALL_EXCEPTION, Instruction::decode_instr(0xc), mem);
         return false;
     }
     mem.heapAddress = addr;
+    return true;
+}
+
+bool sys_handle_exception(CPU &cpu, Memory &mem) {
+    // not available in user mode
+    if (cpu.c0.get_mode() == USER) {
+        cpu.raise_exception(SYSCALL_EXCEPTION, Instruction::decode_instr(0xc), mem);
+        return false;
+    }
+
+    // Go to default exception handler. Assume cpu.raise_exception() was already called
+    if (cpu.c0.handle_exception(cpu) == false) cpu.terminate(255);
     return true;
 }

@@ -22,8 +22,8 @@ struct MIPS::CPU {
     Coprocessor0 &c0;
     System system; // contains file streams for input and output
 
-    MODE mode = USER;
     unsigned char exit = 0; // exit code
+    bool powered = true;    // whether the cpu should execute instructions each cycle
 
     explicit CPU(Coprocessor0 &coproc, std::istream& input, std::ostream& output);
 
@@ -35,7 +35,7 @@ struct MIPS::CPU {
     // this allows the normal incrementing of the PC and any branches/jumps to use the same function
     void queue_pc_update(Word addr);
 
-    Word Fetch(Memory &MEM);
+    Word Fetch(Memory &mem);
 
     static Instruction Decode(Word code);
 
@@ -44,13 +44,13 @@ struct MIPS::CPU {
     // Sets 'exit' to the code and throws a runtime error to be caught be the main program
     void terminate(unsigned char code);
 
-    void raise_exception(ExceptionCode exception, Instruction instr);
+    void raise_exception(ExceptionCode exception, Instruction instr, Memory &mem);
 
     // Returns program entry
     void load_executable(const char* path, int argc, char **argv, Memory &mem);
 
     // Sets the mode and returns whether the mode was changed
-    bool set_mode(MODE new_mode, Memory &mem);
+    bool set_mode(MODE new_mode, Memory &mem) const;
 };
 
 #endif //MIPS_PROC_PROCESSOR_H

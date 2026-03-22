@@ -12,6 +12,7 @@ protected:
     CPU cpu{c0, std::cin, std::cout};
 
     void SetUp() override {
+        cpu.set_mode(USER, mem);
         cpu.set_pc_entry(0x00400000);
         cpu.PC.reset();
     }
@@ -738,9 +739,67 @@ TEST_F(InstructionTest, TestMthiMtlo) {
 }
 
 TEST_F(InstructionTest, TestMfc0) {
+    cpu.set_mode(KERNEL, mem);
     R(26) = 4324;
     cpu.c0.status.set(34235);
-    Word code = 0x401a6000;
+    Word code = 0x401a6000; // mfc0 $k0, $12
     cpu.Execute(mem, CPU::Decode(code));
     EXPECT_EQ(R(26), 34235);
+
+    // Sets register to zero if c0 register doesn't exist
+    R(26) = 4861;
+    code = 0x401a9000; // mfc0 $k0, $18
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(26), 0);
+}
+
+TEST_F(InstructionTest, TestMtc0) {
+    cpu.set_mode(KERNEL, mem);
+    R(26) = 245676;
+    Word code = 0x409a6000; // mtc0 $k0, $12
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(cpu.c0.status.read(), 245676);
+    EXPECT_EQ(R(26), 245676); // doesn't touch rt
+
+    // ignores instruction if register doesn't exist
+    code = 0x409a9000; // mtc0 $k0, $18
+    EXPECT_PASS(0x409a9000);
+    EXPECT_EQ(R(26), 245676); // doesn't touch rt
+}
+
+TEST_F(InstructionTest, TestInterruptsToggle) {
+    cpu.set_mode(KERNEL, mem);
+    R(26) = 4247;
+    s32 v = c0.status.read();
+    Word code = 0x417A6000; // di $k0
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(26), v);
+    EXPECT_EQ(c0.get_interrupts(), false);
+
+    v = c0.status.read();
+    R(26) = 32323;
+    code = 0x417A6020; // ei $k0
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(26), v);
+    EXPECT_EQ(c0.get_interrupts(), true);
+}
+
+TEST_F(InstructionTest, TestEret) {
+    cpu.set_mode(KERNEL, mem);
+    c0.epc.set(0x2521);
+    Word code = 0x42000018;
+    cpu.Execute(mem, CPU::Decode(code));
+    cpu.update_pc();
+    EXPECT_EQ(cpu.PC.read(), 0x2521);
+}
+
+TEST_F(InstructionTest, TestWait) {
+    EXPECT_EQ(cpu.powered, true);
+    Word code = 0x42000020;
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(cpu.powered, false);
+
+    c0.has_handler = false;
+    cpu.raise_exception(INTERRUPT, CPU::Decode(0), mem);
+    EXPECT_EQ(cpu.powered, true);
 }

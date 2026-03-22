@@ -117,6 +117,8 @@ struct MIPS::Memory {
 
     void debugData(int size);
 
+    void debugKdata(int size);
+
     void debugStack(int size);
 
     void reset() const;

@@ -136,10 +136,10 @@ Byte Memory::readByte(const Word addr) {
         return stack.readByte(addr);
     }
     if (text_current->inSegment(addr)) {
-        return utext.readByte(addr);
+        return text_current->readByte(addr);
     }
     if (data_current->inSegment(addr)) {
-        return udata.readByte(addr);
+        return data_current->readByte(addr);
     }
     throw std::out_of_range("address out of range\n");
 }
@@ -262,6 +262,13 @@ void Memory::debugData(const int size) {
     }
 }
 
+void Memory::debugKdata(const int size) {
+    for (int i = 0; i < size; i++) {
+        Byte b = kdata.readByte(KDATA_START+i);
+        printf("%.8x: 0x%.2x (%c) \n", KDATA_START+i, b, b);
+    }
+}
+
 void Memory::debugStack(const int size) {
     for (int i = 0; i < size; i++) {
         Byte b = stack.readByte(STACK_LIMIT-i);
@@ -273,4 +280,6 @@ void Memory::reset() const {
     stack.reset();
     utext.reset();
     udata.reset();
+    kdata.reset();
+    ktext.reset();
 }
