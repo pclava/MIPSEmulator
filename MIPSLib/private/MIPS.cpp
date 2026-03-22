@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
                 // EXECUTE INSTRUCTION
                 cpu.Execute(mem, instr);
             }
-            // ISSUE INTERRUPTS
+            // ISSUE HARDWARE INTERRUPTS
 
         } catch (std::runtime_error &) {
             // IF CPU TERMINATED, CATCH AND EXIT
