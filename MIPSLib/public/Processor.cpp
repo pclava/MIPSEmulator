@@ -1,20 +1,20 @@
 #include "utils.h"
 #include "Processor.h"
+#include "InstructionSet.h"
 #include "mof.h"
-#include <cstring>
 #include <ranges>
 #include <sys/fcntl.h>
 
 using namespace MIPS;
 
-CPU::CPU(Coprocessor0 *coproc, std::istream& input, std::ostream& output) :
+CPU::CPU(Coprocessor0 &coproc, std::istream& input, std::ostream& output) :
     PC(32, 0),
     HI(33, 0),
     LO(34, 0),
+    c0(coproc),
     system(input, output)
 {
-    c0 = coproc;
-    init_opcode_table(opcode_table, funct_table);
+    init_opcode_table(opcode_table, funct_table, cop0_table);
 }
 
 void CPU::set_pc_entry(const Word entry) {
@@ -30,13 +30,13 @@ void CPU::queue_pc_update(Word addr) {
     newPC = addr;
 }
 
-Word CPU::Fetch(Memory &MEM) {
+Word CPU::Fetch(Memory &mem) {
     Word ret;
     try {
-        ret = MEM.readWord(PC.read());
+        ret = mem.readWord(PC.read());
     } catch (const std::out_of_range&) {
-        c0->vaddr.set(PC.read());
-        raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0));
+        c0.vaddr.set(PC.read());
+        raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0), mem);
         return 0;
     }
     newPC = PC.read()+4;
@@ -60,12 +60,27 @@ void CPU::terminate(unsigned char code) {
     throw std::runtime_error("CPU terminated");
 }
 
-void CPU::raise_exception(const ExceptionCode exception, const Instruction instr) {
-    c0->set_cause(exception); // set the cause register
-    c0->epc.set(PC.read()); // set epc to instruction that caused exception
-    c0->status.set(c0->status.read() | 0b10); // set status bit 1
-    c0->bad.set((instr.opcode << 26) | (instr.addr)); // recover bad instruction
-    if (c0->handle_exception(*this) == 0) terminate(255);
+void CPU::raise_exception(const ExceptionCode exception, const Instruction instr, Memory &mem) {
+    // Ignore interrupts if needed
+    if (exception == INTERRUPT && c0.get_interrupts() == false) return;
+
+    // Power on processor, if needed
+    powered = true;
+
+    // Set processor mode
+    if (set_mode(KERNEL, mem) == false) {
+        // if already in kernel mode, terminate fatally
+        terminate(255);
+    }
+
+    // Note: the default exception handler does everything at once. at the end of this function, the exception is fully handled.
+    // A custom exception handler only jumps to EXC_VECTOR. the exception will not be handled by the end of this function.
+
+    // Jump to exception handler, terminate if fatal
+    if (c0.raise_exception(*this, exception, instr) == 0) terminate(255);
+
+    // Check if mode changed (if c0 default exception handler returned control)
+    if (c0.get_mode() == USER) set_mode(USER, mem); // necessary to reflect the change in memory
 }
 
 // Returns program entry
@@ -81,7 +96,7 @@ void load_file(const char *path, mof_file &file) {
     // Read header
     if (mof_read_header(f, &file.hdr) == 0) {
         fclose(f);
-        throw std::runtime_error("Could not read file header");
+        throw std::runtime_error("Couldx not read file header");
     }
     if (!mof_is_valid(&file.hdr)) {
         fclose(f);
@@ -104,6 +119,8 @@ void load_file(const char *path, mof_file &file) {
     file.size = static_cast<uint32_t>(size);
     file.text = mof_text(file.file);
     file.data = mof_data(file.file, &file.hdr);
+    file.ktext = mof_ktext(file.file, &file.hdr);
+    file.kdata = mof_kdata(file.file, &file.hdr);
     file.relocs = mof_relocs(file.file, &file.hdr);
     file.syms = mof_symbols(file.file, &file.hdr);
     file.strings = mof_strtab(file.file, &file.hdr);
@@ -117,9 +134,21 @@ void load_text(Memory &mem, const mof_file &file) {
     }
 }
 
+void load_ktext(Memory &mem, const mof_file &file) {
+    for (u32 i = 0; i < file.hdr.ktext/4; i++) { // Text segment
+        mem.writeWord(EXC_VECTOR+4*i, file.ktext[i]);
+    }
+}
+
 void load_data(Memory &mem, const mof_file &file) {
     for (u32 i = 0; i < file.hdr.data; i++) { // Data segment
         mem.writeByte(DATA_START+0x00010000+i, file.data[i]); // begin writing at 0x10010000
+    }
+}
+
+void load_kdata(Memory &mem, const mof_file &file) {
+    for (u32 i = 0; i < file.hdr.kdata; i++) { // Data segment
+        mem.writeByte(KDATA_START+i, file.kdata[i]);
     }
 }
 
@@ -166,10 +195,18 @@ void CPU::load_executable(const char *path, const int argc, char **argv, Memory 
     mof_file file{};
     load_file(path, file);
 
+    // If the ktext is empty, inform coprocessor
+    c0.has_handler = file.hdr.ktext != 0;
+
     // Load into processor
     set_pc_entry(file.hdr.entry);
+    set_mode(USER, mem);
     load_text(mem, file);
     load_data(mem, file);
+    set_mode(KERNEL, mem);
+    load_ktext(mem, file);
+    load_kdata(mem, file);
+    set_mode(USER, mem);
     const s32 sp = load_stack(mem, argc, argv);
     RF[29] = sp;
 
@@ -177,4 +214,17 @@ void CPU::load_executable(const char *path, const int argc, char **argv, Memory 
     if (munmap(file.file, file.size) == -1) {
         throw std::runtime_error("Error unmapping file");
     }
+}
+
+bool CPU::set_mode(MODE new_mode, Memory &mem) const {
+    MODE old_mode = c0.set_mode(new_mode);
+    if (new_mode == USER) {
+        mem.data_current = &mem.udata;
+        mem.text_current = &mem.utext;
+    } else if (new_mode == KERNEL) {
+        mem.data_current = &mem.kdata;
+        mem.text_current = &mem.ktext;
+    }
+
+    return new_mode != old_mode;
 }

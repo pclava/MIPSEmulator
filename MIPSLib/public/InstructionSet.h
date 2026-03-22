@@ -37,10 +37,13 @@ struct MIPS::Instruction {
     }
 };
 
-void init_opcode_table(OPHandler (&)[64], OPHandler (&)[64]);
+void init_opcode_table(OPHandler (&)[64], OPHandler (&)[64], OPHandler (&)[17]);
 
 bool op_undefined(CPU&, Memory&, Instruction);
-bool op_special(CPU&, Memory&, Instruction);
+
+// SPECIAL ENCODINGS
+bool op_special(CPU&, Memory&, Instruction);    // opcode 0
+bool op_cop0(CPU&, Memory&, Instruction);       // opcode 17
 
 /* === R-TYPE === */
 bool op_add(CPU&, Memory&, Instruction);
@@ -106,11 +109,19 @@ bool op_lwr(CPU&, Memory&, Instruction);
 
 /* === OTHER === */
 bool op_syscall(CPU&, Memory&, Instruction); // syscalls aren't actually instructions and should instead raise a syscall exception but it's easier this way
-bool op_break(CPU&, Memory&, Instruction); // syscalls aren't actually instructions and should instead raise a syscall exception but it's easier this way
+bool op_break(CPU&, Memory&, Instruction);
 
 /* === J-TYPE === */
 bool op_j(CPU&, Memory&, Instruction);
 bool op_jal(CPU&, Memory&, Instruction);
+
+/* === COP0 === */
+bool op_mfc0(CPU&, Memory&, Instruction);
+bool op_mtc0(CPU&, Memory&, Instruction);
+bool op_interrupts(CPU&, Memory&, Instruction);
+bool op_c0(CPU&, Memory&, Instruction);
+bool op_eret(CPU&, Memory&, Instruction);
+bool op_wait(CPU&, Memory&, Instruction);
 
 
 #endif //MIPS_INSTRUCTION_H

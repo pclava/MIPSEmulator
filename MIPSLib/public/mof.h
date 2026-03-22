@@ -13,7 +13,7 @@ extern "C" {
  * Minimal executable and linkable format for this assembler, linker, and emulator toolchain
  * File is stored little-endian
  *
- * HEADER (24 bytes)
+ * HEADER (32 bytes)
  * TEXT
  * DATA
  * RELOCATION DATA
@@ -24,6 +24,8 @@ extern "C" {
 enum mof_segment {
     TEXT,
     DATA,
+    KTEXT,
+    KDATA,
     UNDEF
 };
 
@@ -44,8 +46,10 @@ struct mof_header {
     uint32_t magic; // must equal MOF_MAGIC
     uint32_t text;  // size in bytes of text segment
     uint32_t data;  // size in bytes of data segment
-    uint32_t syms;  // size in bytes of symbol table
+    uint32_t ktext; // size in bytes of kernel text segment
+    uint32_t kdata; // size in bytes of kernel data segment
     uint32_t rels;  // size in bytes of relocation table
+    uint32_t syms;  // size in bytes of symbol table
     uint32_t entry; // program entry address
 };
 
@@ -56,16 +60,20 @@ struct mof_file {
 
     uint32_t *text;                 // pointer to text segment
     uint8_t *data;                  // pointer to data
+    uint32_t *ktext;                // pointer to kernel text
+    uint8_t *kdata;                 // pointer to kernel data
     struct mof_relocation *relocs;  // pointer to relocation data
     struct mof_symbol *syms;        // pointer to symbol table
     char *strings;                  // pointer to string table
 };
 
 #define MOF_MAGIC 0x00464f4d; // "MOF" little-endian
-#define MOF_HEADERSIZE 24
+#define MOF_HEADERSIZE 32
 #define MOF_TXTOFF (MOF_HEADERSIZE)
 #define MOF_DTAOFF(head) (MOF_TXTOFF + (head)->text)
-#define MOF_RELOFF(head) (MOF_DTAOFF(head) + (head)->data)
+#define MOF_KTXTOFF(head) (MOF_DTAOFF(head) + (head)->data)
+#define MOF_KDTAOFF(head) (MOF_KTXTOFF(head) + (head)->ktext)
+#define MOF_RELOFF(head) (MOF_KDTAOFF(head) + (head)->kdata)
 #define MOF_SYMOFF(head) (MOF_RELOFF(head) + (head)->rels)
 #define MOF_STROFF(head) (MOF_SYMOFF(head) + (head)->syms)
 
@@ -96,6 +104,8 @@ int mof_is_valid(const struct mof_header *hdr);
 // Section access return pointer to start of segment
 uint32_t *mof_text(void *file);
 uint8_t *mof_data(void *file, const struct mof_header *hdr);
+uint32_t *mof_ktext(void *file, const struct mof_header *hdr);
+uint8_t *mof_kdata(void *file, const struct mof_header *hdr);
 struct mof_relocation *mof_relocs(void *file, const struct mof_header *hdr);
 struct mof_symbol *mof_symbols(void *file, const struct mof_header *hdr);
 char *mof_strtab(void *file, const struct mof_header *hdr);

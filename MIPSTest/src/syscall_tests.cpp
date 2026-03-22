@@ -10,10 +10,10 @@ protected:
     std::stringstream testOut;
 
     Memory mem;
-    Coprocessor0 c0;
+    Coprocessor0 c0{};
     CPU cpu;
 
-    SyscallTest() : cpu(&c0, testIn, testOut) {
+    SyscallTest() : cpu(c0, testIn, testOut) {
     }
 
     void SetUp() override {
@@ -178,6 +178,7 @@ TEST_F(SyscallTest, CanOpenAndCloseFile) {
 }
 
 TEST_F(SyscallTest, CanReadFile) {
+
     Byte path[] = "MIPSTest/src/test.txt";
     mem.writeN(0x10000000, sizeof(path), path);
 
@@ -298,4 +299,25 @@ TEST_F(SyscallTest, CanUseHeap) {
     R(2) = 23;
     R(4) = 0x00400000;
     EXPECT_FAIL(cpu.Execute(mem, CPU::Decode(0xc)));
+}
+
+TEST_F(SyscallTest, CanRequestExceptionHandling) {
+    cpu.set_mode(USER, mem);
+    c0.has_handler = false;
+    R(2) = 24;
+    EXPECT_THROW(cpu.Execute(mem, CPU::Decode(0xc)), std::runtime_error);
+    EXPECT_EQ(cpu.exit, 255);
+
+    cpu.set_mode(KERNEL, mem);
+    R(2) = 24;
+    c0.set_cause(ARITHMETIC_OVERFLOW_EXCEPTION);
+    EXPECT_THROW(cpu.Execute(mem, CPU::Decode(0xc)), std::runtime_error);
+    EXPECT_EQ(cpu.exit, 255);
+
+    cpu.exit = 0;
+    cpu.set_mode(KERNEL, mem);
+    R(2) = 24;
+    c0.set_cause(INTERRUPT);
+    EXPECT_NO_THROW(cpu.Execute(mem, CPU::Decode(0xc)));
+    EXPECT_EQ(cpu.exit, 0);
 }

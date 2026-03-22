@@ -13,6 +13,11 @@ namespace MIPS {
     using u32 = uint32_t;
     using s32 = int32_t;
 
+    enum MODE {
+        USER,
+        KERNEL
+    };
+
     enum ExceptionCode {
         INTERRUPT = 0,
         ADDRESS_ERROR_EXCEPTION_LOAD = 4,
@@ -32,6 +37,10 @@ namespace MIPS {
      *
      * the emulator only simulates 4 Mb of these
      */
+    inline Word KTEXT_START = 0x80000000; // 1 Mb kernel text
+    inline Word KTEXT_LIMIT = 0x800fffff;
+    inline Word KDATA_START = 0x90000000; // 1 Mb kernel data
+    inline Word KDATA_LIMIT = 0x900fffff;
     inline Word STACK_START = 0x7fc00000; // 4 Mb stack memory
     inline Word STACK_LIMIT = 0x7fffffff;
     inline Word DATA_START =  0x10000000; // 4 Mb data memory
@@ -39,6 +48,7 @@ namespace MIPS {
     inline Word TEXT_START =  0x00400000; // 4 Mb text memory
     inline Word TEXT_LIMIT =  0x007fffff;
 
+    inline Word EXC_VECTOR = 0x80000180;  // Start of exception handler
     inline Word HEAP_START =  0x10080000; // starting heap pointer (heap can go below, down to DATA_START)
 
     struct Register;
