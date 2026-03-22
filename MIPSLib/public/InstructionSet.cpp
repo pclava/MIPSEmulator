@@ -10,7 +10,7 @@ void init_opcode_table(OPHandler (&op)[64], OPHandler (&funct)[64], OPHandler (&
     for (int i = 0; i < 64; i++) {
         op[i] = op_undefined;
         funct[i] = op_undefined;
-        cop0[i] = op_undefined;
+        if (i < 17) cop0[i] = op_undefined;
     }
 
     op[0x00] = op_special;
@@ -413,7 +413,7 @@ bool op_lw(CPU &cpu, Memory &mem, const Instruction instruction) {
     const s32 imm = signExtend(instruction.imm);
     const Word addr = R(rs) + imm;
     if (addr % 4 != 0) {
-        cpu.c0->vaddr.set(toS32(addr));
+        cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction);
         return false;
     }
@@ -421,7 +421,7 @@ bool op_lw(CPU &cpu, Memory &mem, const Instruction instruction) {
     try {
         value = mem.readWord(addr);
     } catch (const std::out_of_range&) {
-        cpu.c0->vaddr.set(toS32(addr));
+        cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction);
         return false;
     }
@@ -461,7 +461,7 @@ bool op_sb(CPU &cpu, Memory &mem, const Instruction instruction) {
     try {
         mem.writeByte(addr, b);
     } catch (const std::out_of_range&) {
-        cpu.c0->vaddr.set(toS32(addr));
+        cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, instruction);
         return false;
     }
@@ -473,7 +473,7 @@ bool op_sh(CPU &cpu, Memory &mem, const Instruction instruction) {
     const s32 imm = signExtend(instruction.imm);
     const Word addr = R(rs) + imm;
     if (addr % 2 != 0) {
-        cpu.c0->vaddr.set(toS32(addr));
+        cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, instruction);
         return false;
     }
@@ -483,7 +483,7 @@ bool op_sh(CPU &cpu, Memory &mem, const Instruction instruction) {
         mem.writeByte(addr, b0);
         mem.writeByte(addr+1, b1);
     } catch (const std::out_of_range&) {
-        cpu.c0->vaddr.set(toS32(addr));
+        cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, instruction);
         return false;
     }
@@ -494,14 +494,14 @@ bool op_sw(CPU &cpu, Memory &mem, const Instruction instruction) {
     const s32 imm = signExtend(instruction.imm);
     const Word addr = R(rs) + imm;
     if (addr % 4 != 0) {
-        cpu.c0->vaddr.set(toS32(addr));
+        cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, instruction);
         return false;
     }
     try {
         mem.writeWord(addr, R(rt));
     } catch (const std::out_of_range&) {
-        cpu.c0->vaddr.set(toS32(addr));
+        cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, instruction);
         return false;
     }
@@ -515,7 +515,7 @@ bool op_lb(CPU &cpu, Memory &mem, const Instruction instruction) {
     try {
         value = mem.readByte(addr);
     } catch (const std::out_of_range&) {
-        cpu.c0->vaddr.set(toS32(addr));
+        cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction);
         return false;
     }
@@ -530,7 +530,7 @@ bool op_lbu(CPU &cpu, Memory &mem, const Instruction instruction) {
     try {
         value = mem.readByte(addr);
     } catch (const std::out_of_range&) {
-        cpu.c0->vaddr.set(toS32(addr));
+        cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction);
         return false;
     }
@@ -542,7 +542,7 @@ bool op_lh(CPU &cpu, Memory &mem, const Instruction instruction) {
     const s32 imm = signExtend(instruction.imm);
     const Word addr = R(rs) + imm;
     if (addr % 2 != 0) {
-        cpu.c0->vaddr.set(toS32(addr));
+        cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction);
         return false;
     }
@@ -551,7 +551,7 @@ bool op_lh(CPU &cpu, Memory &mem, const Instruction instruction) {
         value |= mem.readByte(addr);
         value |= mem.readByte(addr+1) << 8;
     } catch (const std::out_of_range&) {
-        cpu.c0->vaddr.set(toS32(addr));
+        cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction);
         return false;
     }
@@ -563,7 +563,7 @@ bool op_lhu(CPU &cpu, Memory &mem, const Instruction instruction) {
     const s32 imm = signExtend(instruction.imm);
     const Word addr = R(rs) + imm;
     if (addr % 2 != 0) {
-        cpu.c0->vaddr.set(toS32(addr));
+        cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction);
         return false;
     }
@@ -572,7 +572,7 @@ bool op_lhu(CPU &cpu, Memory &mem, const Instruction instruction) {
         value |= mem.readByte(addr);
         value |= mem.readByte(addr+1) << 8;
     } catch (const std::out_of_range&) {
-        cpu.c0->vaddr.set(toS32(addr));
+        cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction);
         return false;
     }
@@ -592,7 +592,7 @@ bool op_lwl(CPU &cpu, Memory &mem, const Instruction instruction) {
             j -= 8;
         }
     } catch (const std::out_of_range&) {
-        cpu.c0->vaddr.set(toS32(addr));
+        cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction);
         return false;
     }
@@ -615,7 +615,7 @@ bool op_lwr(CPU &cpu, Memory &mem, const Instruction instruction) {
             j += 8;
         }
     } catch (const std::out_of_range&) {
-        cpu.c0->vaddr.set(toS32(addr));
+        cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction);
         return false;
     }
@@ -642,7 +642,7 @@ bool op_swl(CPU &cpu, Memory &mem, const Instruction instruction) {
             j-=8;
         }
     } catch (const std::out_of_range&) {
-        cpu.c0->vaddr.set(toS32(addr));
+        cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, instruction);
         return false;
     }
@@ -663,7 +663,7 @@ bool op_swr(CPU &cpu, Memory &mem, const Instruction instruction) {
             j+=8;
         }
     } catch (const std::out_of_range&) {
-        cpu.c0->vaddr.set(toS32(addr));
+        cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction);
         return false;
     }
@@ -692,7 +692,7 @@ bool op_mfc0(CPU &cpu, Memory&, const Instruction instruction) {
     // Puts the value of the c0 register rd into gpr rt
     // Get c0 register. if it doesn't exist, return 0
     try {
-        Register &rd = cpu.c0->get_register(instruction.rd);
+        Register &rd = cpu.c0.get_register(instruction.rd);
         R(rt) = rd.read();
     } catch (const std::out_of_range&) {
         R(rt) = 0;

@@ -14,18 +14,18 @@ struct MIPS::CPU {
     Register HI;
     Register LO;
     RegisterFile RF;
-    Coprocessor0 *c0;
 
     OPHandler opcode_table[64]{};
     OPHandler funct_table[64]{};
     OPHandler cop0_table[17]{};
 
+    Coprocessor0 &c0;
     System system; // contains file streams for input and output
 
     MODE mode = USER;
     unsigned char exit = 0; // exit code
 
-    explicit CPU(Coprocessor0 *coproc, std::istream& input = std::cin, std::ostream& output = std::cout);
+    explicit CPU(Coprocessor0 &coproc, std::istream& input, std::ostream& output);
 
     void set_pc_entry(Word entry);
 

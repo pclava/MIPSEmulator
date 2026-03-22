@@ -81,7 +81,7 @@ bool sys_print_str(CPU &cpu, Memory &mem) {
         }
         cpu.system.out << str << std::flush;
     } catch (const std::out_of_range&) {
-        cpu.c0->vaddr.set(static_cast<s32>(addr+i));
+        cpu.c0.vaddr.set(static_cast<s32>(addr+i));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0xc));
         return false;
     }
@@ -117,7 +117,7 @@ bool sys_read_str(CPU &cpu, Memory &mem) {
             mem.writeByte(addr+i, c);
         }
     } catch (const std::out_of_range&) {
-        cpu.c0->vaddr.set(static_cast<s32>(addr+i));
+        cpu.c0.vaddr.set(static_cast<s32>(addr+i));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, Instruction::decode_instr(0xc));
         return false;
     }
@@ -179,7 +179,7 @@ bool sys_open_file(CPU &cpu, Memory &mem) {
             c = static_cast<char>(mem.readByte(addr++));
         }
     }  catch (const std::out_of_range&) {
-        cpu.c0->vaddr.set(static_cast<s32>(addr-1));
+        cpu.c0.vaddr.set(static_cast<s32>(addr-1));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0xc));
         return false;
     }
@@ -222,7 +222,7 @@ bool sys_read_file(CPU &cpu, Memory &mem) {
             mem.writeByte(addr+i, c[0]);
         }
     }  catch (const std::out_of_range&) {
-        cpu.c0->vaddr.set(static_cast<s32>(addr+i));
+        cpu.c0.vaddr.set(static_cast<s32>(addr+i));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, Instruction::decode_instr(0xc));
         return false;
     }
@@ -247,7 +247,7 @@ bool sys_write_file(CPU &cpu, Memory &mem) {
             }
         }
     }  catch (const std::out_of_range&) {
-        cpu.c0->vaddr.set(static_cast<s32>(addr+i));
+        cpu.c0.vaddr.set(static_cast<s32>(addr+i));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0xc));
         return false;
     }

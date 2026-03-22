@@ -10,10 +10,10 @@ protected:
     std::stringstream testOut;
 
     Memory mem;
-    Coprocessor0 c0;
+    Coprocessor0 c0{};
     CPU cpu;
 
-    SyscallTest() : cpu(&c0, testIn, testOut) {
+    SyscallTest() : cpu(c0, testIn, testOut) {
     }
 
     void SetUp() override {
@@ -178,6 +178,7 @@ TEST_F(SyscallTest, CanOpenAndCloseFile) {
 }
 
 TEST_F(SyscallTest, CanReadFile) {
+
     Byte path[] = "MIPSTest/src/test.txt";
     mem.writeN(0x10000000, sizeof(path), path);
 

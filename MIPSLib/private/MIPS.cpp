@@ -6,7 +6,7 @@ using namespace MIPS;
 int main(int argc, char *argv[]) {
     Memory mem;
     Coprocessor0 c0{};
-    CPU cpu{&c0};
+    CPU cpu{c0, std::cin, std::cout};
 
     if (argc <= 1) {
         fprintf(stderr, "Error: please provide an executable\n");

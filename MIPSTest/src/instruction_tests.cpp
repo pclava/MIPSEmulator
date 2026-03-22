@@ -9,7 +9,7 @@ class InstructionTest : public testing::Test {
 protected:
     Memory mem;
     Coprocessor0 c0{};
-    CPU cpu{&c0};
+    CPU cpu{c0, std::cin, std::cout};
 
     void SetUp() override {
         cpu.set_pc_entry(0x00400000);
@@ -736,11 +736,11 @@ TEST_F(InstructionTest, TestMthiMtlo) {
     cpu.Execute(mem, CPU::Decode(code));
     EXPECT_EQ(cpu.LO.read(), 423);
 }
-//
-// TEST_F(InstructionTest, TestMfc0) {
-//     R(26) = 4324;
-//     cpu.c0.status.set(34235);
-//     Word code = 0x401a6000;
-//     cpu.Execute(mem, CPU::Decode(code));
-//     EXPECT_EQ(R(26), 34235);
-// }
+
+TEST_F(InstructionTest, TestMfc0) {
+    R(26) = 4324;
+    cpu.c0.status.set(34235);
+    Word code = 0x401a6000;
+    cpu.Execute(mem, CPU::Decode(code));
+    EXPECT_EQ(R(26), 34235);
+}
