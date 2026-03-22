@@ -55,3 +55,20 @@ bool Coprocessor0::handle_exception(CPU &state) {
     status.set(status.read() | 1); // enable interrupts
     return ret; // return control to user
 }
+
+Register & Coprocessor0::get_register(int num) {
+    switch (num) {
+        case 8:
+            return vaddr;
+        case 12:
+            return status;
+        case 13:
+            return cause;
+        case 14:
+            return epc;
+        case 0:
+            return bad;
+        default:
+            throw std::out_of_range("Invalid coprocessor 0 register\n");
+    }
+}

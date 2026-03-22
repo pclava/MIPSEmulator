@@ -40,7 +40,7 @@ namespace MIPS {
     inline Word KTEXT_START = 0x80000000; // 1 Mb kernel text
     inline Word KTEXT_LIMIT = 0x800fffff;
     inline Word KDATA_START = 0x90000000; // 1 Mb kernel data
-    inline Word KDATA_LIMIT = 0x90000000;
+    inline Word KDATA_LIMIT = 0x900fffff;
     inline Word STACK_START = 0x7fc00000; // 4 Mb stack memory
     inline Word STACK_LIMIT = 0x7fffffff;
     inline Word DATA_START =  0x10000000; // 4 Mb data memory

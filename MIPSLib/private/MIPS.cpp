@@ -5,7 +5,7 @@ using namespace MIPS;
 
 int main(int argc, char *argv[]) {
     Memory mem;
-    Coprocessor0 c0;
+    Coprocessor0 c0{};
     CPU cpu{&c0};
 
     if (argc <= 1) {

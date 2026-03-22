@@ -22,6 +22,8 @@ struct MIPS::Coprocessor0 {
 
     // THIS DOES THE ACTUAL EXCEPTION HANDLING; returns whether program should terminate
     bool handle_exception(CPU &state);
+
+    Register &get_register(int num);
 };
 
 #endif //MIPS_COPROCESSOR0_H

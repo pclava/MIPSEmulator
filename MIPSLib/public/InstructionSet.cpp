@@ -6,10 +6,11 @@
 
 using namespace MIPS;
 
-void init_opcode_table(OPHandler (&op)[64], OPHandler (&funct)[64]) {
+void init_opcode_table(OPHandler (&op)[64], OPHandler (&funct)[64], OPHandler (&cop0)[17]) {
     for (int i = 0; i < 64; i++) {
         op[i] = op_undefined;
         funct[i] = op_undefined;
+        cop0[i] = op_undefined;
     }
 
     op[0x00] = op_special;
@@ -26,6 +27,7 @@ void init_opcode_table(OPHandler (&op)[64], OPHandler (&funct)[64]) {
     op[0x0c] = op_andi;
     op[0x0d] = op_ori;
     op[0x0e] = op_xori;
+    op[0x10] = op_cop0;
     op[0x0f] = op_lui;
     op[0x20] = op_lb;
     op[0x21] = op_lh;
@@ -76,6 +78,11 @@ void init_opcode_table(OPHandler (&op)[64], OPHandler (&funct)[64]) {
     funct[0x33] = op_tltu;
     funct[0x34] = op_teq;
     funct[0x36] = op_tne;
+
+    cop0[0x00] = op_mfc0;
+    cop0[0x04] = op_mtc0;
+    cop0[0x0b] = op_interrupts;
+    cop0[0x10] = op_c0;
 }
 
 s32 signExtend(const unsigned short imm) {
@@ -102,6 +109,12 @@ bool op_undefined(CPU &, Memory&, Instruction) {
 bool op_special(CPU & cpu, Memory & mem, const Instruction instruction) {
     return cpu.funct_table[instruction.funct](cpu, mem, instruction);
 }
+
+// Opcode 17 (COP0 encoding)
+bool op_cop0(CPU & cpu, Memory & mem, const Instruction instruction) {
+    return cpu.cop0_table[instruction.rs](cpu, mem, instruction);
+}
+
 
 // macro for instructions of the form rd = rs (operator) rt
 #define rfunc(operation) cpu.RF[instruction.rd] = cpu.RF[instruction.rs] operation cpu.RF[instruction.rt];
@@ -669,5 +682,32 @@ bool op_jal(CPU &cpu, Memory &, const Instruction instruction) {
     const Word jaddr = ((cpu.PC.read()+4) & 0xF0000000) | (instruction.addr << 2 & 0xFFFFFFFC);
     cpu.RF[31] = cpu.PC.read() + 4;
     cpu.queue_pc_update(toS32(jaddr));
+    return true;
+}
+
+
+// COP0
+
+bool op_mfc0(CPU &cpu, Memory&, const Instruction instruction) {
+    // Puts the value of the c0 register rd into gpr rt
+    // Get c0 register. if it doesn't exist, return 0
+    try {
+        Register &rd = cpu.c0->get_register(instruction.rd);
+        R(rt) = rd.read();
+    } catch (const std::out_of_range&) {
+        R(rt) = 0;
+    }
+    return true;
+}
+
+bool op_mtc0(CPU&, Memory&, Instruction) {
+    return true;
+}
+
+bool op_interrupts(CPU&, Memory&, Instruction) {
+    return true;
+}
+
+bool op_c0(CPU&, Memory&, Instruction) {
     return true;
 }

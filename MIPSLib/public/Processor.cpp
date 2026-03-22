@@ -1,7 +1,7 @@
 #include "utils.h"
 #include "Processor.h"
+#include "InstructionSet.h"
 #include "mof.h"
-#include <cstring>
 #include <ranges>
 #include <sys/fcntl.h>
 
@@ -11,10 +11,10 @@ CPU::CPU(Coprocessor0 *coproc, std::istream& input, std::ostream& output) :
     PC(32, 0),
     HI(33, 0),
     LO(34, 0),
+    c0(coproc),
     system(input, output)
 {
-    c0 = coproc;
-    init_opcode_table(opcode_table, funct_table);
+    init_opcode_table(opcode_table, funct_table, cop0_table);
 }
 
 void CPU::set_pc_entry(const Word entry) {
@@ -104,6 +104,8 @@ void load_file(const char *path, mof_file &file) {
     file.size = static_cast<uint32_t>(size);
     file.text = mof_text(file.file);
     file.data = mof_data(file.file, &file.hdr);
+    file.ktext = mof_ktext(file.file, &file.hdr);
+    file.kdata = mof_kdata(file.file, &file.hdr);
     file.relocs = mof_relocs(file.file, &file.hdr);
     file.syms = mof_symbols(file.file, &file.hdr);
     file.strings = mof_strtab(file.file, &file.hdr);
@@ -117,9 +119,22 @@ void load_text(Memory &mem, const mof_file &file) {
     }
 }
 
+void load_ktext(Memory &mem, const mof_file &file) {
+    for (u32 i = 0; i < file.hdr.ktext/4; i++) { // Text segment
+        mem.writeWord(KTEXT_START+4*i, file.ktext[i]);
+    }
+}
+
+
 void load_data(Memory &mem, const mof_file &file) {
     for (u32 i = 0; i < file.hdr.data; i++) { // Data segment
         mem.writeByte(DATA_START+0x00010000+i, file.data[i]); // begin writing at 0x10010000
+    }
+}
+
+void load_kdata(Memory &mem, const mof_file &file) {
+    for (u32 i = 0; i < file.hdr.kdata; i++) { // Data segment
+        mem.writeByte(KDATA_START+i, file.kdata[i]); // begin writing at 0x10010000
     }
 }
 
@@ -168,8 +183,13 @@ void CPU::load_executable(const char *path, const int argc, char **argv, Memory 
 
     // Load into processor
     set_pc_entry(file.hdr.entry);
+    set_mode(USER, mem);
     load_text(mem, file);
     load_data(mem, file);
+    set_mode(KERNEL, mem);
+    load_ktext(mem, file);
+    load_kdata(mem, file);
+    set_mode(USER, mem);
     const s32 sp = load_stack(mem, argc, argv);
     RF[29] = sp;
 
@@ -177,4 +197,18 @@ void CPU::load_executable(const char *path, const int argc, char **argv, Memory 
     if (munmap(file.file, file.size) == -1) {
         throw std::runtime_error("Error unmapping file");
     }
+}
+
+bool CPU::set_mode(MODE new_mode, Memory &mem) {
+    MODE old_mode = mode;
+    mode = new_mode;
+    if (mode == USER) {
+        mem.data_current = &mem.udata;
+        mem.text_current = &mem.utext;
+    } else if (mode == KERNEL) {
+        mem.data_current = &mem.kdata;
+        mem.text_current = &mem.ktext;
+    }
+
+    return mode != old_mode;
 }

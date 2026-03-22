@@ -14,17 +14,16 @@ struct MIPS::CPU {
     Register HI;
     Register LO;
     RegisterFile RF;
+    Coprocessor0 *c0;
 
     OPHandler opcode_table[64]{};
     OPHandler funct_table[64]{};
-    OPHandler cop0_table[64]{};
+    OPHandler cop0_table[17]{};
 
     System system; // contains file streams for input and output
 
     MODE mode = USER;
     unsigned char exit = 0; // exit code
-
-    Coprocessor0 *c0;
 
     explicit CPU(Coprocessor0 *coproc, std::istream& input = std::cin, std::ostream& output = std::cout);
 
@@ -48,7 +47,10 @@ struct MIPS::CPU {
     void raise_exception(ExceptionCode exception, Instruction instr);
 
     // Returns program entry
-    void load_executable(const char* path, const int argc, char **argv, Memory &mem);
+    void load_executable(const char* path, int argc, char **argv, Memory &mem);
+
+    // Sets the mode and returns whether the mode was changed
+    bool set_mode(MODE new_mode, Memory &mem);
 };
 
 #endif //MIPS_PROC_PROCESSOR_H
