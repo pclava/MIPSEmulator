@@ -27,6 +27,8 @@ struct MIPS::CPU {
 
     explicit CPU(Coprocessor0 &coproc, std::istream& input, std::ostream& output);
 
+    void cycle(Memory &mem);
+
     void set_pc_entry(Word entry);
 
     void update_pc();

@@ -15,19 +15,12 @@ int main(int argc, char *argv[]) {
 
     cpu.load_executable(argv[1], argc-1, &argv[1], mem);
 
-    // THIS IS WHERE THE MAGIC HAPPENS
     while (true) {
         try {
             if (cpu.powered) {
-                // FETCH INSTRUCTION AT PROGRAM COUNTER
-                const Word machine_code = cpu.Fetch(mem);
-
-                // DECODE INSTRUCTION
-                const Instruction instr = CPU::Decode(machine_code);
-
-                // EXECUTE INSTRUCTION
-                cpu.Execute(mem, instr);
+                cpu.cycle(mem); // fetch, decode, and execute
             }
+
             // ISSUE HARDWARE INTERRUPTS
 
         } catch (std::runtime_error &) {

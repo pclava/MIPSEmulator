@@ -17,6 +17,18 @@ CPU::CPU(Coprocessor0 &coproc, std::istream& input, std::ostream& output) :
     init_opcode_table(opcode_table, funct_table, cop0_table);
 }
 
+// THIS IS WHERE THE MAGIC HAPPENS
+void CPU::cycle(Memory &mem) {
+    // FETCH INSTRUCTION AT PROGRAM COUNTER
+    const Word machine_code = Fetch(mem);
+
+    // DECODE INSTRUCTION
+    const Instruction instr = Decode(machine_code);
+
+    // EXECUTE INSTRUCTION
+    Execute(mem, instr);
+}
+
 void CPU::set_pc_entry(const Word entry) {
     PC.reset_value = static_cast<s32>(entry);
     PC.reset();
