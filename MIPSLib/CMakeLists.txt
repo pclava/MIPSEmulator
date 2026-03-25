@@ -13,4 +13,5 @@ target_include_directories(MIPSLib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/private)
 
 add_executable(MIPSEmulator private/MIPS.cpp)
 add_dependencies(MIPSEmulator MIPSLib)
-target_link_libraries(MIPSEmulator MIPSLib)
+target_link_libraries(MIPSEmulator PRIVATE MIPSLib)
+target_link_libraries(MIPSEmulator PRIVATE SDL3::SDL3-static)

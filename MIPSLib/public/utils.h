@@ -47,6 +47,8 @@ namespace MIPS {
     inline Word DATA_LIMIT =  0x103fffff;
     inline Word TEXT_START =  0x00400000; // 4 Mb text memory
     inline Word TEXT_LIMIT =  0x007fffff;
+    inline Word MMIO_START =  0xffff0000; // 64 Kb memory mapped IO
+    inline Word MMIO_LIMIT =  0xffffffff;
 
     inline Word EXC_VECTOR = 0x80000180;  // Start of exception handler
     inline Word HEAP_START =  0x10080000; // starting heap pointer (heap can go below, down to DATA_START)

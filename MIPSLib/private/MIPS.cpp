@@ -1,5 +1,6 @@
 #include "Processor.h"
 #include "utils.h"
+#include "SDL3/SDL.h"
 
 using namespace MIPS;
 
@@ -18,7 +19,8 @@ int main(int argc, char *argv[]) {
     while (true) {
         if (cpu.powered) {
             try {
-                cpu.cycle(mem); // fetch, decode, and execute
+                // FETCH, DECODE, EXECUTE NEXT INSTRUCTION
+                cpu.cycle(mem);
             } catch (std::runtime_error &) {
                 // IF CPU TERMINATED, CATCH AND EXIT
                 printf("\nProgram terminated with exit code %d\n", cpu.exit);
@@ -26,6 +28,9 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        // ISSUE INTERRUPTS
+        // HANDLE HARDWARE
+        // Poll for events
+        // Update display
+        // display.draw_screen(renderer);
     }
 }
