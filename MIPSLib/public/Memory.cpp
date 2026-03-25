@@ -6,7 +6,6 @@ using namespace MIPS;
 
 // MEMORY BLOCK
 
-#define TABLE_SIZE(s, l) ((l-s)/BLOCK_SIZE + ((l-s) % BLOCK_SIZE != 0))  // takes ceiling of difference divided by block size
 
 MemoryBlock::MemoryBlock() : data(BLOCK_SIZE, 0) {}
 
@@ -163,6 +162,7 @@ void Memory::readN(const Word addr, const Word num_bytes, Byte *buf) {
     }
     if (mmio.inSegment(addr)) {
         mmio.readN(addr, num_bytes, buf);
+        return;
     }
     throw std::out_of_range("address out of range\n");
 }
@@ -199,6 +199,7 @@ void Memory::writeByte(const Word addr, Byte byte) {
     }
     if (mmio.inSegment(addr)) {
         mmio.writeByte(addr, byte);
+        return;
     }
     throw std::out_of_range("address out of range\n");
 }
@@ -218,6 +219,7 @@ void Memory::writeN(const Word addr, const Word num_bytes, const Byte *buf) {
     }
     if (mmio.inSegment(addr)) {
         mmio.writeN(addr, num_bytes, buf);
+        return;
     }
     throw std::out_of_range("address out of range\n");
 }
@@ -237,6 +239,7 @@ void Memory::writeWord(const Word addr, Word word) {
     }
     if (mmio.inSegment(addr)) {
         mmio.writeWord(addr, word);
+        return;
     }
     throw std::out_of_range("address out of range\n");
 }

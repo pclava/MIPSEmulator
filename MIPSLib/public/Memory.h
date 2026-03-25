@@ -18,6 +18,8 @@
 * in the text segment.
 */
 
+#define TABLE_SIZE(s, l) ((l-s)/BLOCK_SIZE + ((l-s) % BLOCK_SIZE != 0))  // takes ceiling of difference divided by block size
+
 // Note: does not perform safety checks
 struct MIPS::MemoryBlock {
     std::vector<Byte> data;
