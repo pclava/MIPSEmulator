@@ -16,17 +16,16 @@ int main(int argc, char *argv[]) {
     cpu.load_executable(argv[1], argc-1, &argv[1], mem);
 
     while (true) {
-        try {
-            if (cpu.powered) {
+        if (cpu.powered) {
+            try {
                 cpu.cycle(mem); // fetch, decode, and execute
+            } catch (std::runtime_error &) {
+                // IF CPU TERMINATED, CATCH AND EXIT
+                printf("\nProgram terminated with exit code %d\n", cpu.exit);
+                break;
             }
-
-            // ISSUE HARDWARE INTERRUPTS
-
-        } catch (std::runtime_error &) {
-            // IF CPU TERMINATED, CATCH AND EXIT
-            printf("\nProgram terminated with exit code %d\n", cpu.exit);
-            break;
         }
+
+        // ISSUE INTERRUPTS
     }
 }

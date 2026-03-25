@@ -42,7 +42,7 @@ bool Coprocessor0::handle_exception(CPU &state) {
     bool ret = false;
     switch (read_cause()) {
         case INTERRUPT:
-            fprintf(stderr, "hardware interrupt\n");
+            // fprintf(stderr, "hardware interrupt\n");
             ret = true;
             state.queue_pc_update(epc.read()); // interrupts resume at instruction that caused exception
             break;
