@@ -19,7 +19,7 @@ void Coprocessor0::set_cause(const ExceptionCode exception) {
 
 bool Coprocessor0::raise_exception(CPU &state, const ExceptionCode exception, const Instruction instr) {
     // Disable interrupts
-    set_interrupts(false);
+    set_interrupts_enabled(false);
 
     // Set cause, EPC, and bad
     set_cause(exception);
@@ -27,7 +27,7 @@ bool Coprocessor0::raise_exception(CPU &state, const ExceptionCode exception, co
     bad.set((instr.opcode << 26) | (instr.addr)); // recover bad instruction
 
     // Check if using special exception handler. If not, handle ourselves
-    if (!has_handler) return handle_exception(state);
+    if (!has_handler) return handle_exception();
 
     // Go to kernel text
     state.queue_pc_update(EXC_VECTOR);
@@ -35,16 +35,15 @@ bool Coprocessor0::raise_exception(CPU &state, const ExceptionCode exception, co
 }
 
 // Default exception handler when the program does not have one
-bool Coprocessor0::handle_exception(CPU &state) {
-    state.queue_pc_update(state.PC.read()+4); // resume at next instruction
+// Always terminates the CPU, even for interrupts!
+bool Coprocessor0::handle_exception() const {
+    ExceptionCode exception = read_cause();
+
     if (bad.read() == 0) fprintf(stderr, "\nRuntime exception at 0x%.8x:\n ", epc.read());
     else fprintf(stderr, "\nRuntime exception at 0x%.8x (instruction: 0x%.8x):\n ", epc.read(), bad.read());
-    bool ret = false;
-    switch (read_cause()) {
+    switch (exception) {
         case INTERRUPT:
-            // fprintf(stderr, "hardware interrupt\n");
-            ret = true;
-            state.queue_pc_update(epc.read()); // interrupts resume at instruction that caused exception
+            fprintf(stderr, "hardware interrupt %d\n", get_interrupt());
             break;
         case ARITHMETIC_OVERFLOW_EXCEPTION:
             fprintf(stderr, "arithmetic overflow\n");
@@ -68,12 +67,7 @@ bool Coprocessor0::handle_exception(CPU &state) {
             fprintf(stderr, "unknown exception\n");
             break;
     }
-    if (ret) {
-        cause.set(0); // clear cause register
-        set_interrupts(true);
-        set_mode(USER); // return control
-    }
-    return ret; // return control to user
+    return false;
 }
 
 Register & Coprocessor0::get_register(int num) {
@@ -108,13 +102,26 @@ MODE Coprocessor0::set_mode(const MODE mode) {
 }
 
 // Sets value of Status bit 0, returns old value
-bool Coprocessor0::set_interrupts(bool value) {
+bool Coprocessor0::set_interrupts_enabled(bool value) {
     bool old = status.read() % 2 == 1;
     value ? status.set(status.read() | 0b1) : status.set(status.read() & ~0b1);
     return old;
 }
 
-// Returns value of Status bit 0
-bool Coprocessor0::get_interrupts() const {
-    return status.read() & 0b1;
+// Returns value of Status bit 0 AND the mode
+bool Coprocessor0::get_interrupts_enabled() const {
+    return (status.read() & 0b1) && !get_mode();
+}
+
+void Coprocessor0::clear_interrupts() {
+    cause.set(cause.read() & static_cast<s32>(0xfffc03ff));
+}
+
+void Coprocessor0::set_interrupt(InterruptCode interrupt) {
+    clear_interrupts();
+    cause.set(cause.read() | interrupt);
+}
+
+InterruptCode Coprocessor0::get_interrupt() const {
+    return static_cast<InterruptCode>(cause.read() & 0x3fc00);
 }

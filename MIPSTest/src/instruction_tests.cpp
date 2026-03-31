@@ -774,14 +774,16 @@ TEST_F(InstructionTest, TestInterruptsToggle) {
     Word code = 0x417A6000; // di $k0
     cpu.Execute(mem, CPU::Decode(code));
     EXPECT_EQ(R(26), v);
-    EXPECT_EQ(c0.get_interrupts(), false);
+    EXPECT_EQ(c0.get_interrupts_enabled(), false);
 
     v = c0.status.read();
     R(26) = 32323;
     code = 0x417A6020; // ei $k0
     cpu.Execute(mem, CPU::Decode(code));
     EXPECT_EQ(R(26), v);
-    EXPECT_EQ(c0.get_interrupts(), true);
+    EXPECT_EQ(c0.get_interrupts_enabled(), false);
+    cpu.set_mode(USER, mem);
+    EXPECT_EQ(c0.get_interrupts_enabled(), true);
 }
 
 TEST_F(InstructionTest, TestEret) {
@@ -799,7 +801,10 @@ TEST_F(InstructionTest, TestWait) {
     cpu.Execute(mem, CPU::Decode(code));
     EXPECT_EQ(cpu.powered, false);
 
-    c0.has_handler = false;
+    c0.has_handler = true;
+    cpu.set_mode(KERNEL, mem);
+    mem.writeWord(EXC_VECTOR, 0x42000018); // put 'eret' in kernel text so exception immediately returns
+    cpu.set_mode(USER, mem);
     cpu.raise_exception(INTERRUPT, CPU::Decode(0), mem);
     EXPECT_EQ(cpu.powered, true);
 }

@@ -58,28 +58,6 @@ TEST_F(ProcessorTest, CanDecode) {
     EXPECT_EQ(instr3.addr, 0x0100000);
 }
 
-TEST_F(ProcessorTest, ExceptionHandlerReturnsControlOnInterrupt) {
-    // test if after an interrupt, control is returned to cpu at the *same* PC
-    cpu.set_mode(USER, mem);
-    cpu.PC.set(0x324);
-    c0.has_handler = false;
-    EXPECT_NO_THROW(cpu.raise_exception(INTERRUPT, CPU::Decode(0), mem));
-    cpu.update_pc();
-
-    // control returned to USER
-    EXPECT_EQ(c0.get_mode(), USER);
-
-    // enables interrupts
-    EXPECT_EQ(cpu.c0.get_interrupts(), 1);
-
-    // clears cause
-    EXPECT_EQ(c0.read_cause(), 0);
-
-    // does not touch PC
-    EXPECT_EQ(cpu.PC.read(), 0x324);
-
-}
-
 TEST_F(ProcessorTest, ExceptionHandlerSetsCorrectFlags) {
     cpu.set_mode(USER, mem);
     cpu.PC.set(0x555);
@@ -88,7 +66,7 @@ TEST_F(ProcessorTest, ExceptionHandlerSetsCorrectFlags) {
     // Enters kernel mode
     EXPECT_EQ(c0.get_mode(), KERNEL);
     // Disables interrupts
-    EXPECT_EQ(cpu.c0.get_interrupts(), 0);
+    EXPECT_EQ(cpu.c0.get_interrupts_enabled(), 0);
     // Sets cause
     EXPECT_EQ(c0.read_cause(), ARITHMETIC_OVERFLOW_EXCEPTION);
     // Writes EPC
