@@ -4,6 +4,7 @@
 #include "mof.h"
 #include <ranges>
 #include <sys/fcntl.h>
+#include <cstring>
 
 using namespace MIPS;
 
