@@ -1,7 +1,9 @@
 #include "Display.h"
 #include "Processor.h"
 #include "utils.h"
-#include "SDL3/SDL.h"
+#include <SDL3/SDL.h>
+
+#include <queue>
 
 using namespace MIPS;
 
@@ -180,4 +182,5 @@ int main(int argc, char *argv[]) {
             }
         }
     }
+    return 0;
 }
