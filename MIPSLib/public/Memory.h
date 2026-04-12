@@ -6,7 +6,7 @@
 #include <memory>
 
 /*
-* Memory is divided into disjoint MemorySegments, each 1-4 Mb
+* Memory is divided into disjoint MemorySegments.
 * Each MemorySegment is an array of pointers to MemoryBlocks
 * A MemoryBlock, when initialized, is an array of 4096 Bytes
 * The emulator only initializes a MemoryBlock when an address
@@ -17,6 +17,8 @@
 * and enough 4096-byte chunks to store the program's contents
 * in the text segment.
 */
+
+#define TABLE_SIZE(s, l) ((l-s)/BLOCK_SIZE + ((l-s) % BLOCK_SIZE != 0))  // takes ceiling of difference divided by block size
 
 // Note: does not perform safety checks
 struct MIPS::MemoryBlock {
@@ -87,6 +89,7 @@ struct MIPS::Memory {
     MemorySegment utext;
     MemorySegment ktext;
     MemorySegment kdata;
+    MemorySegment mmio;
 
     // Pointers to the current text and data segments (user or kernel)
     MemorySegment *data_current;

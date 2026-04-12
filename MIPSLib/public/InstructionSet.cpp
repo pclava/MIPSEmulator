@@ -715,11 +715,11 @@ bool op_interrupts(CPU &cpu, Memory&, const Instruction instruction) {
     switch (instruction.funct) {
         case 0:
             R(rt) = cpu.c0.status.read();
-            cpu.c0.set_interrupts(false);
+            cpu.c0.set_interrupts_enabled(false);
             break;
         case 32:
             R(rt) = cpu.c0.status.read();
-            cpu.c0.set_interrupts(true);
+            cpu.c0.set_interrupts_enabled(true);
             break;
         default:
             return true;
@@ -738,8 +738,10 @@ bool op_c0(CPU &cpu, Memory &mem, const Instruction instruction) {
     }
 }
 
-bool op_eret(CPU &cpu, Memory &, Instruction) {
+// Sets the mode, returns PC to user space
+bool op_eret(CPU &cpu, Memory &mem, Instruction) {
     if (cpu.c0.get_mode() == USER) return true; // ignore if in user mode
+    cpu.set_mode(USER, mem);
     cpu.queue_pc_update(cpu.c0.epc.read());
     return true;
 }

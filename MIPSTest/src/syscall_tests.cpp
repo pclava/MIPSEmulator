@@ -313,11 +313,4 @@ TEST_F(SyscallTest, CanRequestExceptionHandling) {
     c0.set_cause(ARITHMETIC_OVERFLOW_EXCEPTION);
     EXPECT_THROW(cpu.Execute(mem, CPU::Decode(0xc)), std::runtime_error);
     EXPECT_EQ(cpu.exit, 255);
-
-    cpu.exit = 0;
-    cpu.set_mode(KERNEL, mem);
-    R(2) = 24;
-    c0.set_cause(INTERRUPT);
-    EXPECT_NO_THROW(cpu.Execute(mem, CPU::Decode(0xc)));
-    EXPECT_EQ(cpu.exit, 0);
 }

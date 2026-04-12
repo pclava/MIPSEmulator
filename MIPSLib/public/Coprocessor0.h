@@ -5,6 +5,13 @@
 #include "Register.h"
 #include "utils.h"
 
+enum InterruptCode {
+    NO_INTERRUPT =      0,
+    DISPLAY_REFRESH =   0x400,  // IP2
+    KEY_DOWN =          0x800,  // IP3
+    KEY_UP =            0x1000, // IP4
+};
+
 struct MIPS::Coprocessor0 {
     Register vaddr;
     Register status;
@@ -25,7 +32,7 @@ struct MIPS::Coprocessor0 {
     bool raise_exception(CPU &state, ExceptionCode exception, Instruction instr);
 
     // Default exception handler used if program does not provide one
-    bool handle_exception(CPU &state);
+    [[nodiscard]] bool handle_exception() const;
 
     Register &get_register(int num);
 
@@ -36,10 +43,17 @@ struct MIPS::Coprocessor0 {
     MODE set_mode(MODE mode);
 
     // Sets value of Status bit 0, returns old value
-    bool set_interrupts(bool value);
+    bool set_interrupts_enabled(bool value);
 
     // Returns value of Status bit 0
-    bool get_interrupts() const;
+    [[nodiscard]] bool get_interrupts_enabled() const;
+
+    void clear_interrupts();
+
+    void set_interrupt(InterruptCode interrupt);
+
+    [[nodiscard]] InterruptCode get_interrupt() const;
+
 };
 
 #endif //MIPS_COPROCESSOR0_H

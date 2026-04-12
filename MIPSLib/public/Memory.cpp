@@ -6,7 +6,6 @@ using namespace MIPS;
 
 // MEMORY BLOCK
 
-#define TABLE_SIZE(s, l) ((l-s)/BLOCK_SIZE + ((l-s) % BLOCK_SIZE != 0))  // takes ceiling of difference divided by block size
 
 MemoryBlock::MemoryBlock() : data(BLOCK_SIZE, 0) {}
 
@@ -127,6 +126,7 @@ Memory::Memory() :
     utext(TEXT_START, TEXT_LIMIT),
     ktext(KTEXT_START, KTEXT_LIMIT),
     kdata(KDATA_START, KDATA_LIMIT),
+    mmio(MMIO_START, MMIO_LIMIT),
     data_current(&udata),
     text_current(&utext),
     heapAddress(HEAP_START) {}
@@ -140,6 +140,9 @@ Byte Memory::readByte(const Word addr) {
     }
     if (data_current->inSegment(addr)) {
         return data_current->readByte(addr);
+    }
+    if (mmio.inSegment(addr)) {
+        return mmio.readByte(addr);
     }
     throw std::out_of_range("address out of range\n");
 }
@@ -157,6 +160,10 @@ void Memory::readN(const Word addr, const Word num_bytes, Byte *buf) {
         data_current->readN(addr, num_bytes, buf);
         return;
     }
+    if (mmio.inSegment(addr)) {
+        mmio.readN(addr, num_bytes, buf);
+        return;
+    }
     throw std::out_of_range("address out of range\n");
 }
 
@@ -170,6 +177,9 @@ Word Memory::readWord(const Word addr) {
     }
     if (data_current->inSegment(addr)) {
         return data_current->readWord(addr);
+    }
+    if (mmio.inSegment(addr)) {
+        return mmio.readWord(addr);
     }
     throw std::out_of_range("address out of range\n");
 }
@@ -185,6 +195,10 @@ void Memory::writeByte(const Word addr, Byte byte) {
     }
     if (data_current->inSegment(addr)) {
         data_current->writeByte(addr, byte);
+        return;
+    }
+    if (mmio.inSegment(addr)) {
+        mmio.writeByte(addr, byte);
         return;
     }
     throw std::out_of_range("address out of range\n");
@@ -203,6 +217,10 @@ void Memory::writeN(const Word addr, const Word num_bytes, const Byte *buf) {
         data_current->writeN(addr, num_bytes, buf);
         return;
     }
+    if (mmio.inSegment(addr)) {
+        mmio.writeN(addr, num_bytes, buf);
+        return;
+    }
     throw std::out_of_range("address out of range\n");
 }
 
@@ -219,6 +237,10 @@ void Memory::writeWord(const Word addr, Word word) {
         data_current->writeWord(addr, word);
         return;
     }
+    if (mmio.inSegment(addr)) {
+        mmio.writeWord(addr, word);
+        return;
+    }
     throw std::out_of_range("address out of range\n");
 }
 
@@ -233,6 +255,9 @@ Byte Memory::operator[](const Word addr) const {
     if (data_current->inSegment(addr)) {
         return (*data_current)[addr];
     }
+    if (mmio.inSegment(addr)) {
+        return mmio[addr];
+    }
     throw std::out_of_range("address out of range\n");
 }
 
@@ -245,6 +270,9 @@ Byte& Memory::operator[](const Word addr) {
     }
     if (data_current->inSegment(addr)) {
         return (*data_current)[addr];
+    }
+    if (mmio.inSegment(addr)) {
+        return mmio[addr];
     }
     throw std::out_of_range("address out of range\n");
 }

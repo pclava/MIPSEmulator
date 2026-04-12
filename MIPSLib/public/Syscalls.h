@@ -38,7 +38,9 @@ enum SyscallCode {
     SYSCALL_PRINT_UNSIGNED,     // 22
     SYSCALL_BRK,                // 23
     SYSCALL_HANDLE_EXCEPTION,   // 24 : used in an exception handler to request that the emulator handle the exception
-
+    SYSCALL_SET_SEED,           // 25
+    SYSCALL_RAND_INT,           // 26
+    SYSCALL_RAND_RANGE,         // 27
 };
 
 // Contains output and input streams. CPU sets these to stdout and stdin by default
@@ -72,4 +74,7 @@ bool sys_print_hex(CPU &, Memory &);
 bool sys_print_unsigned(CPU &, Memory &);
 bool sys_brk(CPU &, Memory &);
 bool sys_handle_exception(CPU &, Memory &);
+bool sys_set_seed(CPU &, Memory &);
+bool sys_rand_int(CPU &, Memory &);
+bool sys_rand_range(CPU &, Memory &);
 #endif //MIPS_SYSCALL_H

@@ -4,6 +4,7 @@
 #include "mof.h"
 #include <ranges>
 #include <sys/fcntl.h>
+#include <cstring>
 
 using namespace MIPS;
 
@@ -12,7 +13,8 @@ CPU::CPU(Coprocessor0 &coproc, std::istream& input, std::ostream& output) :
     HI(33, 0),
     LO(34, 0),
     c0(coproc),
-    system(input, output)
+    system(input, output),
+    gen(0)
 {
     init_opcode_table(opcode_table, funct_table, cop0_table);
 }
@@ -73,8 +75,6 @@ void CPU::terminate(unsigned char code) {
 }
 
 void CPU::raise_exception(const ExceptionCode exception, const Instruction instr, Memory &mem) {
-    // Ignore interrupts if needed
-    if (exception == INTERRUPT && c0.get_interrupts() == false) return;
 
     // Power on processor, if needed
     powered = true;
@@ -82,6 +82,7 @@ void CPU::raise_exception(const ExceptionCode exception, const Instruction instr
     // Set processor mode
     if (set_mode(KERNEL, mem) == false) {
         // if already in kernel mode, terminate fatally
+        fprintf(stderr, "kernel panic: exception occurred in exception handler (code %d)\n", exception);
         terminate(255);
     }
 
@@ -93,6 +94,16 @@ void CPU::raise_exception(const ExceptionCode exception, const Instruction instr
 
     // Check if mode changed (if c0 default exception handler returned control)
     if (c0.get_mode() == USER) set_mode(USER, mem); // necessary to reflect the change in memory
+}
+
+bool CPU::raise_interrupt(InterruptCode interrupt, Memory &mem) {
+    // Ignore interrupt if needed
+    if (c0.get_interrupts_enabled() == false) return false;
+
+    c0.set_interrupt(interrupt);
+    raise_exception(INTERRUPT, Decode(0), mem);
+    update_pc(); // update PC ourselves because the interrupt occurs *outside* of the main loop
+    return true;
 }
 
 // Returns program entry

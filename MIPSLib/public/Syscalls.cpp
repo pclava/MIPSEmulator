@@ -54,6 +54,12 @@ bool do_syscall(CPU &cpu, Memory &mem) {
             return sys_brk(cpu, mem);
         case SYSCALL_HANDLE_EXCEPTION:
             return sys_handle_exception(cpu, mem);
+        case SYSCALL_SET_SEED:
+            return sys_set_seed(cpu, mem);
+        case SYSCALL_RAND_INT:
+            return sys_rand_int(cpu, mem);
+        case SYSCALL_RAND_RANGE:
+            return sys_rand_range(cpu, mem);
         default:
             cpu.raise_exception(SYSCALL_EXCEPTION, Instruction::decode_instr(0xc), mem);
             return false;
@@ -294,6 +300,7 @@ bool sys_brk(CPU &cpu, Memory &mem) {
     return true;
 }
 
+// v0 = 24
 bool sys_handle_exception(CPU &cpu, Memory &mem) {
     // not available in user mode
     if (cpu.c0.get_mode() == USER) {
@@ -301,7 +308,29 @@ bool sys_handle_exception(CPU &cpu, Memory &mem) {
         return false;
     }
 
-    // Go to default exception handler. Assume cpu.raise_exception() was already called
-    if (cpu.c0.handle_exception(cpu) == false) cpu.terminate(255);
+    // Go to default exception handler. Assume cpu.c0.raise_exception() was already called
+    if (cpu.c0.handle_exception() == false) cpu.terminate(255);
+    if (cpu.c0.get_mode() == USER) cpu.set_mode(USER, mem);
+
     return true;
 }
+
+// v0 = 25, a0 = seed
+bool sys_set_seed(CPU &cpu, Memory &) {
+    cpu.gen.seed(A0);
+    return true;
+}
+
+// v0 = 26, return value in a0
+bool sys_rand_int(CPU &cpu, Memory &) {
+    A0 = static_cast<s32>(cpu.gen());
+    return true;
+}
+
+// v0 = 27, a0 = maximum, return value in a0
+bool sys_rand_range(CPU &cpu, Memory &) {
+    A0 = static_cast<s32>((cpu.gen() + A0) % A0);
+    return true;
+}
+
+

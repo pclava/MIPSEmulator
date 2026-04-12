@@ -1,6 +1,8 @@
 #ifndef MIPS_PROC_PROCESSOR_H
 #define MIPS_PROC_PROCESSOR_H
 
+#include <random>
+
 #include "Register.h"
 #include "InstructionSet.h"
 #include "utils.h"
@@ -21,6 +23,8 @@ struct MIPS::CPU {
 
     Coprocessor0 &c0;
     System system; // contains file streams for input and output
+
+    std::mt19937 gen;
 
     unsigned char exit = 0; // exit code
     bool powered = true;    // whether the cpu should execute instructions each cycle
@@ -47,6 +51,8 @@ struct MIPS::CPU {
     void terminate(unsigned char code);
 
     void raise_exception(ExceptionCode exception, Instruction instr, Memory &mem);
+
+    bool raise_interrupt(InterruptCode interrupt, Memory &mem);
 
     // Returns program entry
     void load_executable(const char* path, int argc, char **argv, Memory &mem);
