@@ -4,51 +4,6 @@
 .define Y $a1
 .define COLOR $a2
 
-.macro printchr %imm
-    li  $v0, _SYSPRINTCHR
-    move $t8, $a0
-    li  $a0, %imm
-    syscall
-    move $a0, $t8
-.end_macro
-
-.macro printreg %reg
-    move    $t8, $a0
-    li      $v0, _SYSPRINTINT
-    move    $a0, %reg
-    syscall
-    li      $a0, 32
-    li      $v0, _SYSPRINTCHR
-    syscall
-    move    $a0, $t8
-.end_macro
-
-.macro drawPixelR %x %y %color
-    move    $a0,  %x
-    move    $a1,  %y
-    move    $a2,  %color
-    jal     __drawPixel
-.end_macro
-
-.macro drawPixelI %x %y %color
-    li      $a0,  %x
-    li      $a1,  %y
-    li      $a2,  %color
-    jal     __drawPixel
-.end_macro
-
-.macro readPixelR %x %y
-    move    $a0,  %x
-    move    $a1,  %y
-    jal     __readPixel
-.end_macro
-
-.macro readPixelI %x %y
-    li      $a0,  %x
-    li      $a1,  %y
-    jal     __readPixel
-.end_macro
-
 .text
 .globl __drawPixel __readPixel __drawLine
 .globl __drawTriangle __drawRect __drawRectFilled
