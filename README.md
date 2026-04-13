@@ -31,6 +31,8 @@ The emulator uses memory-mapped I/O from addresses `0xffff0000` to `0xffffffff`.
 
 The emulator issues three I/O-related interrupts. These pass control to the exception handler, which must be provided. A rudimentary handler is provided in `__start.asm`. On every refresh (62.5 times per second), the emulator issues a display refresh interrupt (IP2 bit in the Cause register). The emulator also issues an interrupt on a keypress or key release (bits IP3 and IP4, respectively). For these, the SDL scancode is written as a byte to address `0xfffffa00`. The program at `examples/src/keyboard.s` uses these to implement an input buffer and exposes some functions to use it.
 
+Note that the emulator currently does not run at a fixed speed. The current CPU speed is displayed in the title of the SDL window. A more powerful machine will run the code faster than a less powerful machine. To ensure consistent timing, your code should rely on the display refresh interrupt, which always occurs 62.5 times per second.
+
 ### Examples
 Three example executables are provided in `examples/`. These are a snake game, a drawing of a bird, and a rendering of the color palette. Run these with `./MIPSEmulator -d <executable>`.
 
