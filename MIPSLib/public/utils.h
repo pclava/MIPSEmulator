@@ -18,6 +18,21 @@ namespace MIPS {
         KERNEL
     };
 
+    enum DisplayMode {
+        GRAPHICAL,
+        TEXT,
+    };
+
+    struct TextFmt {
+        unsigned int foreground : 4;
+        unsigned int background : 4;
+    };
+
+    struct VGAChar {
+        char c;
+        TextFmt fmt;
+    };
+
     enum ExceptionCode {
         INTERRUPT = 0,
         ADDRESS_ERROR_EXCEPTION_LOAD = 4,
@@ -37,7 +52,7 @@ namespace MIPS {
      *
      * the emulator only simulates 4 Mb of these
      */
-    inline constexpr Word KTEXT_START = 0x80000000; // 1 Mb kernel text
+    inline constexpr Word KTEXT_START = 0x80000180; // 1 Mb kernel text
     inline constexpr Word KTEXT_LIMIT = 0x800fffff;
     inline constexpr Word KDATA_START = 0x90000000; // 1 Mb kernel data
     inline constexpr Word KDATA_LIMIT = 0x900fffff;
@@ -50,8 +65,9 @@ namespace MIPS {
     inline constexpr Word MMIO_START =  0xffff0000; // 64 Kb memory mapped IO (16 MemoryBlocks)
     inline constexpr Word MMIO_LIMIT =  0xffffffff;
 
-    inline constexpr Word EXC_VECTOR =  0x80000180;  // Start of exception handler
     inline constexpr Word HEAP_START =  0x10080000; // starting heap pointer (heap can go below, down to DATA_START)
+
+    inline constexpr Word EXC_VEC_PTR = KDATA_START;
 
     struct Register;
     struct RegisterFile;

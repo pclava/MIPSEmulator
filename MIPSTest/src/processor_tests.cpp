@@ -59,7 +59,7 @@ TEST_F(ProcessorTest, CanDecode) {
 }
 
 TEST_F(ProcessorTest, ExceptionHandlerSetsCorrectFlags) {
-    cpu.set_mode(USER, mem);
+    cpu.set_mem_mode(USER, mem);
     cpu.PC.set(0x555);
     c0.has_handler = false; // use default exception handler to ensure cpu terminates
     EXPECT_THROW(cpu.raise_exception(ARITHMETIC_OVERFLOW_EXCEPTION, CPU::Decode(12345), mem), std::runtime_error);
@@ -76,7 +76,7 @@ TEST_F(ProcessorTest, ExceptionHandlerSetsCorrectFlags) {
 }
 
 TEST_F(ProcessorTest, ProcessorGoesToExceptionVector) {
-    cpu.set_mode(USER, mem);
+    cpu.set_mem_mode(USER, mem);
     c0.has_handler = true;
     cpu.raise_exception(INTERRUPT, CPU::Decode(0), mem);
     cpu.update_pc();

@@ -1,6 +1,14 @@
 #include "utils.h"
 #include "Processor.h"
 
+/*
+ * Note on status register:
+ * bits
+ * 4 = mode
+ * 1 = exception level
+ * 0 = interrupts enabled
+ */
+
 Coprocessor0::Coprocessor0() : vaddr(8, 0), status(12, 0xff11), cause(13, 0), epc(14, 0), bad(0,0) {}
 
 // updates bits 2-6 of the cause register
@@ -18,19 +26,19 @@ void Coprocessor0::set_cause(const ExceptionCode exception) {
 }
 
 bool Coprocessor0::raise_exception(CPU &state, const ExceptionCode exception, const Instruction instr) {
+    // Set exception level
+    set_exc_level(true);
+
     // Disable interrupts
     set_interrupts_enabled(false);
 
     // Set cause, EPC, and bad
     set_cause(exception);
-    epc.set(state.PC.read()); // set epc to instruction that caused exception (or in the case of interrupts, the instruction after_
+    epc.set(state.PC.read()); // set epc to instruction that caused exception (or in the case of interrupts, the instruction after because interrupts are processed after the instruction is executed in MIPS.cpp)
     bad.set((instr.opcode << 26) | (instr.addr)); // recover bad instruction
 
-    // Check if using special exception handler. If not, handle ourselves
-    if (!has_handler) return handle_exception();
-
-    // Go to kernel text
-    state.queue_pc_update(EXC_VECTOR);
+    // Go to exception handler
+    state.queue_pc_update(exc_vec);
     return true;
 }
 
@@ -88,15 +96,30 @@ Register & Coprocessor0::get_register(int num) {
 }
 
 [[nodiscard]] MODE Coprocessor0::get_mode() const {
-    s32 v = (status.read() >> 1) & 0x1;
+    s32 v = (status.read() >> 4) & 0x1;
     return v ? KERNEL : USER;
+}
+
+[[nodiscard]] bool Coprocessor0::get_exc_level() const {
+    s32 v = (status.read() >> 1) & 0x1;
+    return v;
 }
 
 MODE Coprocessor0::set_mode(const MODE mode) {
     MODE old = get_mode();
     s32 v = status.read();
-    v &= ~(0b10);       // set bit to 0
-    v |= (mode << 1);   // OR with new mode
+    v &= ~(0b10000);       // set bit 4 to 0
+    v |= (mode << 4);   // OR with new mode
+    status.set(v);
+    return old;
+}
+
+// Note that the only way to return from kernel mode is through an eret instruction.
+bool Coprocessor0::set_exc_level(bool exc_level) {
+    bool old = get_exc_level();
+    s32 v = status.read();
+    v &= ~(0b10); // set bit 1 to 0
+    v |= (exc_level << 1); // OR with new level
     status.set(v);
     return old;
 }
@@ -108,20 +131,25 @@ bool Coprocessor0::set_interrupts_enabled(bool value) {
     return old;
 }
 
-// Returns value of Status bit 0 AND the mode
+// Returns value of Status bit 0 AND exc_level. This only allows interrupts if both are true. TODO: idk if this is right
 bool Coprocessor0::get_interrupts_enabled() const {
-    return (status.read() & 0b1) && !get_mode();
+    return (status.read() & 0b1) && !get_exc_level();
 }
 
 void Coprocessor0::clear_interrupts() {
     cause.set(cause.read() & static_cast<s32>(0xfffc03ff));
 }
 
+// TODO: check mask bits
 void Coprocessor0::set_interrupt(InterruptCode interrupt) {
     clear_interrupts();
-    cause.set(cause.read() | interrupt);
+    cause.set(cause.read() | (interrupt << 8));
 }
 
 InterruptCode Coprocessor0::get_interrupt() const {
-    return static_cast<InterruptCode>(cause.read() & 0x3fc00);
+    return static_cast<InterruptCode>((cause.read() & 0x3fc00) >> 8);
+}
+
+bool Coprocessor0::in_kernel() const {
+    return get_mode() == KERNEL || get_exc_level();
 }

@@ -302,13 +302,13 @@ TEST_F(SyscallTest, CanUseHeap) {
 }
 
 TEST_F(SyscallTest, CanRequestExceptionHandling) {
-    cpu.set_mode(USER, mem);
+    cpu.set_mem_mode(USER, mem);
     c0.has_handler = false;
     R(2) = 24;
     EXPECT_THROW(cpu.Execute(mem, CPU::Decode(0xc)), std::runtime_error);
     EXPECT_EQ(cpu.exit, 255);
 
-    cpu.set_mode(KERNEL, mem);
+    cpu.set_mem_mode(KERNEL, mem);
     R(2) = 24;
     c0.set_cause(ARITHMETIC_OVERFLOW_EXCEPTION);
     EXPECT_THROW(cpu.Execute(mem, CPU::Decode(0xc)), std::runtime_error);

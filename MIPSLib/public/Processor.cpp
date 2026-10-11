@@ -74,26 +74,13 @@ void CPU::terminate(unsigned char code) {
     throw std::runtime_error("CPU terminated");
 }
 
-void CPU::raise_exception(const ExceptionCode exception, const Instruction instr, Memory &mem) {
+void CPU::raise_exception(const ExceptionCode exception, const Instruction instr, Memory &) {
 
     // Power on processor, if needed
     powered = true;
 
-    // Set processor mode
-    if (set_mode(KERNEL, mem) == false) {
-        // if already in kernel mode, terminate fatally
-        fprintf(stderr, "kernel panic: exception occurred in exception handler (code %d)\n", exception);
-        terminate(255);
-    }
-
-    // Note: the default exception handler does everything at once. at the end of this function, the exception is fully handled.
-    // A custom exception handler only jumps to EXC_VECTOR. the exception will not be handled by the end of this function.
-
     // Jump to exception handler, terminate if fatal
     if (c0.raise_exception(*this, exception, instr) == 0) terminate(255);
-
-    // Check if mode changed (if c0 default exception handler returned control)
-    if (c0.get_mode() == USER) set_mode(USER, mem); // necessary to reflect the change in memory
 }
 
 bool CPU::raise_interrupt(InterruptCode interrupt, Memory &mem) {
@@ -159,7 +146,7 @@ void load_text(Memory &mem, const mof_file &file) {
 
 void load_ktext(Memory &mem, const mof_file &file) {
     for (u32 i = 0; i < file.hdr.ktext/4; i++) { // Text segment
-        mem.writeWord(EXC_VECTOR+4*i, file.ktext[i]);
+        mem.writeWord(KTEXT_START+4*i, file.ktext[i]);
     }
 }
 
@@ -214,40 +201,22 @@ s32 load_stack(Memory &mem, const int argc, char **argv) {
     return static_cast<s32>(sp);
 }
 
-void CPU::load_executable(const char *path, const int argc, char **argv, Memory &mem) {
+void CPU::load_kernel(const char *path, Memory &mem) {
     mof_file file{};
     load_file(path, file);
 
-    // If the ktext is empty, inform coprocessor
-    c0.has_handler = file.hdr.ktext != 0;
-
-    // Load into processor
-    set_pc_entry(file.hdr.entry);
-    set_mode(USER, mem);
-    load_text(mem, file);
-    load_data(mem, file);
-    set_mode(KERNEL, mem);
     load_ktext(mem, file);
     load_kdata(mem, file);
-    set_mode(USER, mem);
-    const s32 sp = load_stack(mem, argc, argv);
-    RF[29] = sp;
+
+    // TEMPORARY- DELETE!
+    load_text(mem, file);
+    load_data(mem, file);
+
+    // Set PC
+    set_pc_entry(KTEXT_START);
 
     // Close
     if (munmap(file.file, file.size) == -1) {
         throw std::runtime_error("Error unmapping file");
     }
-}
-
-bool CPU::set_mode(MODE new_mode, Memory &mem) const {
-    MODE old_mode = c0.set_mode(new_mode);
-    if (new_mode == USER) {
-        mem.data_current = &mem.udata;
-        mem.text_current = &mem.utext;
-    } else if (new_mode == KERNEL) {
-        mem.data_current = &mem.kdata;
-        mem.text_current = &mem.ktext;
-    }
-
-    return new_mode != old_mode;
 }

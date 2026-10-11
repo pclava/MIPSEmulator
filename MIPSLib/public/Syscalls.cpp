@@ -303,14 +303,13 @@ bool sys_brk(CPU &cpu, Memory &mem) {
 // v0 = 24
 bool sys_handle_exception(CPU &cpu, Memory &mem) {
     // not available in user mode
-    if (cpu.c0.get_mode() == USER) {
+    if (cpu.c0.get_exc_level() == false) {
         cpu.raise_exception(SYSCALL_EXCEPTION, Instruction::decode_instr(0xc), mem);
         return false;
     }
 
     // Go to default exception handler. Assume cpu.c0.raise_exception() was already called
     if (cpu.c0.handle_exception() == false) cpu.terminate(255);
-    if (cpu.c0.get_mode() == USER) cpu.set_mode(USER, mem);
 
     return true;
 }

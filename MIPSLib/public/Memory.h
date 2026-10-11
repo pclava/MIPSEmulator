@@ -23,6 +23,7 @@
 // Note: does not perform safety checks
 struct MIPS::MemoryBlock {
     std::vector<Byte> data;
+    bool dirty = false;
 
     MemoryBlock();
 
@@ -91,13 +92,12 @@ struct MIPS::Memory {
     MemorySegment kdata;
     MemorySegment mmio;
 
-    // Pointers to the current text and data segments (user or kernel)
-    MemorySegment *data_current;
-    MemorySegment *text_current;
+    // Coprocessor 0 to check mode
+    Coprocessor0 &c0;
 
     Word heapAddress; // address of first unallocated byte in heap
 
-    Memory();
+    explicit Memory(Coprocessor0 &c0);
 
     Byte readByte(Word addr);
 
@@ -111,10 +111,8 @@ struct MIPS::Memory {
 
     void writeWord(Word addr, Word word);
 
-    // Does not initialize memory. readByte() is safer
-    Byte operator[](Word addr) const;
-
-    Byte& operator[](Word addr);
+    // Whether kernel memory is accessible
+    [[nodiscard]] bool full_access() const;
 
     void debugText(int size);
 

@@ -1,4 +1,6 @@
 #include "Memory.h"
+
+#include "Coprocessor0.h"
 #include "utils.h"
 
 using namespace MIPS;
@@ -9,11 +11,14 @@ using namespace MIPS;
 
 MemoryBlock::MemoryBlock() : data(BLOCK_SIZE, 0) {}
 
+// Read
 Byte MemoryBlock::operator[](const Word offset) const {
     return data[offset];
 }
 
+// Write
 Byte & MemoryBlock::operator[](const Word offset) {
+    dirty = true;
     return data[offset];
 }
 
@@ -120,26 +125,35 @@ void MemorySegment::reset() const {
 
 // MEMORY
 
-Memory::Memory() :
+Memory::Memory(Coprocessor0 &c0) :
     stack(STACK_START, STACK_LIMIT),
     udata(DATA_START, DATA_LIMIT),
     utext(TEXT_START, TEXT_LIMIT),
     ktext(KTEXT_START, KTEXT_LIMIT),
     kdata(KDATA_START, KDATA_LIMIT),
     mmio(MMIO_START, MMIO_LIMIT),
-    data_current(&udata),
-    text_current(&utext),
+    c0(c0),
     heapAddress(HEAP_START) {}
+
+bool Memory::full_access() const {
+    return c0.in_kernel();
+}
 
 Byte Memory::readByte(const Word addr) {
     if (stack.inSegment(addr)) {
         return stack.readByte(addr);
     }
-    if (text_current->inSegment(addr)) {
-        return text_current->readByte(addr);
+    if (utext.inSegment(addr)) {
+        return utext.readByte(addr);
     }
-    if (data_current->inSegment(addr)) {
-        return data_current->readByte(addr);
+    if (ktext.inSegment(addr) && full_access()) {
+        return ktext.readByte(addr);
+    }
+    if (udata.inSegment(addr)) {
+        return udata.readByte(addr);
+    }
+    if (kdata.inSegment(addr) && full_access()) {
+        return kdata.readByte(addr);
     }
     if (mmio.inSegment(addr)) {
         return mmio.readByte(addr);
@@ -149,20 +163,22 @@ Byte Memory::readByte(const Word addr) {
 
 void Memory::readN(const Word addr, const Word num_bytes, Byte *buf) {
     if (stack.inSegment(addr)) {
-        stack.readN(addr, num_bytes, buf);
-        return;
+        return stack.readN(addr, num_bytes, buf);
     }
-    if (text_current->inSegment(addr)) {
-        text_current->readN(addr, num_bytes, buf);
-        return;
+    if (utext.inSegment(addr)) {
+        return utext.readN(addr, num_bytes, buf);
     }
-    if (data_current->inSegment(addr)) {
-        data_current->readN(addr, num_bytes, buf);
-        return;
+    if (ktext.inSegment(addr) && full_access()) {
+        return ktext.readN(addr, num_bytes, buf);
+    }
+    if (udata.inSegment(addr)) {
+        return udata.readN(addr, num_bytes, buf);
+    }
+    if (kdata.inSegment(addr) && full_access()) {
+        return kdata.readN(addr, num_bytes, buf);
     }
     if (mmio.inSegment(addr)) {
-        mmio.readN(addr, num_bytes, buf);
-        return;
+        return mmio.readN(addr, num_bytes, buf);
     }
     throw std::out_of_range("address out of range\n");
 }
@@ -172,11 +188,17 @@ Word Memory::readWord(const Word addr) {
     if (stack.inSegment(addr)) {
         return stack.readWord(addr);
     }
-    if (text_current->inSegment(addr)) {
-        return text_current->readWord(addr);
+    if (utext.inSegment(addr)) {
+        return utext.readWord(addr);
     }
-    if (data_current->inSegment(addr)) {
-        return data_current->readWord(addr);
+    if (ktext.inSegment(addr) && full_access()) {
+        return ktext.readWord(addr);
+    }
+    if (udata.inSegment(addr)) {
+        return udata.readWord(addr);
+    }
+    if (kdata.inSegment(addr) && full_access()) {
+        return kdata.readWord(addr);
     }
     if (mmio.inSegment(addr)) {
         return mmio.readWord(addr);
@@ -189,12 +211,20 @@ void Memory::writeByte(const Word addr, Byte byte) {
         stack.writeByte(addr, byte);
         return;
     }
-    if (text_current->inSegment(addr)) {
-        text_current->writeByte(addr, byte);
+    if (utext.inSegment(addr)) {
+        utext.writeByte(addr, byte);
         return;
     }
-    if (data_current->inSegment(addr)) {
-        data_current->writeByte(addr, byte);
+    if (ktext.inSegment(addr) && full_access()) {
+        ktext.writeByte(addr, byte);
+        return;
+    }
+    if (udata.inSegment(addr)) {
+        udata.writeByte(addr, byte);
+        return;
+    }
+    if (kdata.inSegment(addr) && full_access()) {
+        kdata.writeByte(addr, byte);
         return;
     }
     if (mmio.inSegment(addr)) {
@@ -209,12 +239,20 @@ void Memory::writeN(const Word addr, const Word num_bytes, const Byte *buf) {
         stack.writeN(addr, num_bytes, buf);
         return;
     }
-    if (text_current->inSegment(addr)) {
-        text_current->writeN(addr, num_bytes, buf);
+    if (utext.inSegment(addr)) {
+        utext.writeN(addr, num_bytes, buf);
         return;
     }
-    if (data_current->inSegment(addr)) {
-        data_current->writeN(addr, num_bytes, buf);
+    if (ktext.inSegment(addr) && full_access()) {
+        ktext.writeN(addr, num_bytes, buf);
+        return;
+    }
+    if (udata.inSegment(addr)) {
+        udata.writeN(addr, num_bytes, buf);
+        return;
+    }
+    if (kdata.inSegment(addr) && full_access()) {
+        kdata.writeN(addr, num_bytes, buf);
         return;
     }
     if (mmio.inSegment(addr)) {
@@ -229,50 +267,25 @@ void Memory::writeWord(const Word addr, Word word) {
         stack.writeWord(addr, word);
         return;
     }
-    if (text_current->inSegment(addr)) {
-        text_current->writeWord(addr, word);
+    if (utext.inSegment(addr)) {
+        utext.writeWord(addr, word);
         return;
     }
-    if (data_current->inSegment(addr)) {
-        data_current->writeWord(addr, word);
+    if (ktext.inSegment(addr) && full_access()) {
+        ktext.writeWord(addr, word);
+        return;
+    }
+    if (udata.inSegment(addr)) {
+        udata.writeWord(addr, word);
+        return;
+    }
+    if (kdata.inSegment(addr) && full_access()) {
+        kdata.writeWord(addr, word);
         return;
     }
     if (mmio.inSegment(addr)) {
         mmio.writeWord(addr, word);
         return;
-    }
-    throw std::out_of_range("address out of range\n");
-}
-
-// Does not initialize memory. readByte() is safer
-Byte Memory::operator[](const Word addr) const {
-    if (stack.inSegment(addr)) {
-        return stack[addr];
-    }
-    if (text_current->inSegment(addr)) {
-        return (*text_current)[addr];
-    }
-    if (data_current->inSegment(addr)) {
-        return (*data_current)[addr];
-    }
-    if (mmio.inSegment(addr)) {
-        return mmio[addr];
-    }
-    throw std::out_of_range("address out of range\n");
-}
-
-Byte& Memory::operator[](const Word addr) {
-    if (stack.inSegment(addr)) {
-        return stack[addr];
-    }
-    if (text_current->inSegment(addr)) {
-        return (*text_current)[addr];
-    }
-    if (data_current->inSegment(addr)) {
-        return (*data_current)[addr];
-    }
-    if (mmio.inSegment(addr)) {
-        return mmio[addr];
     }
     throw std::out_of_range("address out of range\n");
 }

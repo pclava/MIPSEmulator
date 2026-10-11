@@ -12,7 +12,7 @@ protected:
     CPU cpu{c0, std::cin, std::cout};
 
     void SetUp() override {
-        cpu.set_mode(USER, mem);
+        cpu.set_mem_mode(USER, mem);
         cpu.set_pc_entry(0x00400000);
         cpu.PC.reset();
     }
@@ -739,7 +739,7 @@ TEST_F(InstructionTest, TestMthiMtlo) {
 }
 
 TEST_F(InstructionTest, TestMfc0) {
-    cpu.set_mode(KERNEL, mem);
+    cpu.set_mem_mode(KERNEL, mem);
     R(26) = 4324;
     cpu.c0.status.set(34235);
     Word code = 0x401a6000; // mfc0 $k0, $12
@@ -754,7 +754,7 @@ TEST_F(InstructionTest, TestMfc0) {
 }
 
 TEST_F(InstructionTest, TestMtc0) {
-    cpu.set_mode(KERNEL, mem);
+    cpu.set_mem_mode(KERNEL, mem);
     R(26) = 245676;
     Word code = 0x409a6000; // mtc0 $k0, $12
     cpu.Execute(mem, CPU::Decode(code));
@@ -768,7 +768,7 @@ TEST_F(InstructionTest, TestMtc0) {
 }
 
 TEST_F(InstructionTest, TestInterruptsToggle) {
-    cpu.set_mode(KERNEL, mem);
+    cpu.set_mem_mode(KERNEL, mem);
     R(26) = 4247;
     s32 v = c0.status.read();
     Word code = 0x417A6000; // di $k0
@@ -782,12 +782,12 @@ TEST_F(InstructionTest, TestInterruptsToggle) {
     cpu.Execute(mem, CPU::Decode(code));
     EXPECT_EQ(R(26), v);
     EXPECT_EQ(c0.get_interrupts_enabled(), false);
-    cpu.set_mode(USER, mem);
+    cpu.set_mem_mode(USER, mem);
     EXPECT_EQ(c0.get_interrupts_enabled(), true);
 }
 
 TEST_F(InstructionTest, TestEret) {
-    cpu.set_mode(KERNEL, mem);
+    cpu.set_mem_mode(KERNEL, mem);
     c0.epc.set(0x2521);
     Word code = 0x42000018;
     cpu.Execute(mem, CPU::Decode(code));
@@ -802,9 +802,9 @@ TEST_F(InstructionTest, TestWait) {
     EXPECT_EQ(cpu.powered, false);
 
     c0.has_handler = true;
-    cpu.set_mode(KERNEL, mem);
+    cpu.set_mem_mode(KERNEL, mem);
     mem.writeWord(EXC_VECTOR, 0x42000018); // put 'eret' in kernel text so exception immediately returns
-    cpu.set_mode(USER, mem);
+    cpu.set_mem_mode(USER, mem);
     cpu.raise_exception(INTERRUPT, CPU::Decode(0), mem);
     EXPECT_EQ(cpu.powered, true);
 }

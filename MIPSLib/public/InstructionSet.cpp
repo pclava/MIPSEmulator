@@ -290,12 +290,22 @@ bool op_srav(CPU &cpu, Memory &, const Instruction instruction) {
     return true;
 }
 
-bool op_syscall(CPU &cpu, Memory &mem, const Instruction) {
-    return do_syscall(cpu, mem);
+bool op_syscall(CPU &cpu, Memory &mem, const Instruction instr) {
+    cpu.raise_exception(SYSCALL_EXCEPTION, instr, mem);
+    return true;
+    // return do_syscall(cpu, mem);
 }
 
-bool op_break(CPU &cpu, Memory &mem, const Instruction instruction) {
-    cpu.raise_exception(BREAKPOINT_EXCEPTION, instruction, mem);
+bool op_break(CPU &cpu, Memory &, const Instruction) {
+    printf("BREAK!\n$v0 = 0x%.8x\n"
+            "Cause = 0x%.8x\n"
+            "ExcCode = %d\n"
+            "Status = 0x%.8x\n"
+            "EPC = 0x%.8x\n"
+            "Bad = 0x%.8x\n"
+            "PC = 0x%.8x\n",
+           cpu.RF[2], cpu.c0.cause.read(), (cpu.c0.cause.read() & 0b1111100) >> 2, cpu.c0.status.read(), cpu.c0.epc.read(), cpu.c0.bad.read(), cpu.PC.read());
+    // cpu.raise_exception(BREAKPOINT_EXCEPTION, instruction, mem);
     return true;
 }
 
@@ -691,6 +701,7 @@ bool op_jal(CPU &cpu, Memory &, const Instruction instruction) {
 bool op_mfc0(CPU &cpu, Memory&, const Instruction instruction) {
     // Puts the value of the c0 register rd into gpr rt
     // Get c0 register. if it doesn't exist, return 0
+    if (!cpu.c0.in_kernel()) return true; // ignore if in user mode
     try {
         Register &rd = cpu.c0.get_register(instruction.rd);
         R(rt) = rd.read();
@@ -703,9 +714,11 @@ bool op_mfc0(CPU &cpu, Memory&, const Instruction instruction) {
 bool op_mtc0(CPU &cpu, Memory&, const Instruction instruction) {
     // Puts the value of the gpr register rt into c0 register rd
     // Get the c0 register. if it doesn't exist, ignore the instruction
+    if (!cpu.c0.in_kernel()) return true; // ignore if in user mode
     try {
         Register &rd = cpu.c0.get_register(instruction.rd);
         rd.set(R(rt));
+        // printf("Setting c0 register %u to %u", rd.number, R(rt));
     } catch (const std::out_of_range&) {
     }
     return true;
@@ -739,9 +752,9 @@ bool op_c0(CPU &cpu, Memory &mem, const Instruction instruction) {
 }
 
 // Sets the mode, returns PC to user space
-bool op_eret(CPU &cpu, Memory &mem, Instruction) {
-    if (cpu.c0.get_mode() == USER) return true; // ignore if in user mode
-    cpu.set_mode(USER, mem);
+bool op_eret(CPU &cpu, Memory &, Instruction) {
+    if (!cpu.c0.in_kernel()) return true; // ignore if in user mode
+    cpu.c0.set_exc_level(false); // turn off exclevel
     cpu.queue_pc_update(cpu.c0.epc.read());
     return true;
 }

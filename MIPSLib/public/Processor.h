@@ -54,11 +54,7 @@ struct MIPS::CPU {
 
     bool raise_interrupt(InterruptCode interrupt, Memory &mem);
 
-    // Returns program entry
-    void load_executable(const char* path, int argc, char **argv, Memory &mem);
-
-    // Sets the mode and returns whether the mode was changed
-    bool set_mode(MODE new_mode, Memory &mem) const;
+    void load_kernel(const char* path, Memory &mem);
 };
 
 #endif //MIPS_PROC_PROCESSOR_H

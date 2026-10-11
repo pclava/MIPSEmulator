@@ -9,6 +9,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(SDL_STATIC ON CACHE BOOL "" FORCE)
 set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -16,7 +17,12 @@ FetchContent_Declare(
         GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
         GIT_TAG        main
 )
-FetchContent_MakeAvailable(SDL3)
+FetchContent_Declare(
+        SDL_ttf
+        GIT_REPOSITORY https://github.com/libsdl-org/SDL_ttf.git
+        GIT_TAG        main
+)
+FetchContent_MakeAvailable(SDL3 SDL_ttf)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 add_subdirectory(MIPSLib)

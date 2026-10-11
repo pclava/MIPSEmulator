@@ -40,21 +40,60 @@ unsigned char default_palette[256][3] = {
     {0x00,0x00,0x00}, {0x00,0x00,0x00}, {0x00,0x00,0x00}, {0x00,0x00,0x00}, {0x00,0x00,0x00}, {0x00,0x00,0x00}, {0x00,0x00,0x00}, {0x00,0x00,0x00}
 };
 
+unsigned char text_palette[16][3] = {
+    {0,0,0},
+    {0,0,170},
+    {0,170,0},
+    {0,170,170},
+    {170,0,0},
+    {170,0,170},
+    {170,85,0},
+    {170,170,170},
+    {85,85,85},
+    {85,85,255},
+    {85,255,85},
+    {85,255,255},
+    {255,85,85},
+    {255,85,255},
+    {255,255,85},
+    {255,255,255},
+};
 
-Display::Display(MemorySegment &mem) : memory(mem), palette(), numblocks(mem.table.size()) {
+
+Display::Display(MemorySegment &mem) : memory(mem), palette(), numblocks(mem.table.size()), mode(TEXT) {
     // Initialize every block
     for (Word i = 0; i < numblocks; i++) {
-        mem.getBlock(i*BLOCK_SIZE);
+        mem.getBlock(i * BLOCK_SIZE);
     }
+    // Initialize color palette
     memcpy(palette, default_palette, sizeof(default_palette));
 }
 
-void Display::draw_screen(SDL_Renderer &renderer) const {
+void Display::set_up_renderer(SDL_Renderer *r) {
+    renderer = r;
+    term_canvas = SDL_CreateTexture(
+        renderer,
+        SDL_PIXELFORMAT_RGBA8888,
+        SDL_TEXTUREACCESS_TARGET,
+        720,
+        350
+    );
+}
+
+/*
+ * Based on VGA mode 13h
+ * 320 x 200 bytes stored in linear buffer at address 0xffff0000
+ */
+bool Display::render_frame() const {
     Word offset = 0;
 
     // Loop through each block
     for (Word i = 0; i < numblocks; i++) {
         auto& block = memory.table[i];
+        if (!block->dirty) {
+            continue;
+        }
+        block->dirty = false;
 
         // Loop through each pixel (for the last block, we have to stop earlier)
         Word limit = i == numblocks - 1 ? 2560 : BLOCK_SIZE;
@@ -66,12 +105,107 @@ void Display::draw_screen(SDL_Renderer &renderer) const {
             const Word y = address / DISPLAY_WIDTH;
 
             const unsigned char *color = palette[color_index];
-            SDL_SetRenderDrawColor(&renderer, color[0], color[1], color[2], 0xff);
-            SDL_RenderPoint(&renderer, static_cast<float>(x), static_cast<float>(y));
+            SDL_SetRenderDrawColor(renderer, color[0], color[1], color[2], 0xff);
+            SDL_RenderPoint(renderer, static_cast<float>(x), static_cast<float>(y));
         }
 
         offset += BLOCK_SIZE;
     }
+
+    return true;
+}
+
+TextFmt to_TextFmt(Byte x) {
+    TextFmt ret{};
+    ret.foreground = x & 0xf;
+    ret.background = x >> 4;
+    return ret;
+}
+
+bool Display::term_dirty() const {
+    for (Word i = 0; i < 2; i++) {
+        auto &block = memory.table[i];
+        if (block->dirty) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+/*
+ * Based on VGA text mode (80x25) (characters 9x14)
+ * Characters are represented as two bytes
+ * Stored in 160 x 50 byte buffer starting at 0xffff0000 (same as graphical mode)
+ * The first (lower address) byte represents the ASCII code
+ * The second byte contains foreground color in bits 0-3, background color in bits 4-7
+ */
+bool Display::render_text() const {
+    // Loop through buffer and render each character
+    if (!term_dirty()) return false;
+
+    // Poll dirty addresses from both blocks
+    Word block_offset = 0;
+    for (Word i = 0; i < 2; i++) {
+        auto& block = memory.table[i];
+        block->dirty = false;
+
+        Word limit = i == 1 ? 3904 : BLOCK_SIZE;
+        for (Word offset = block_offset; offset < limit + block_offset; offset += 2) {
+            Word x = (offset/2) % 80;
+            Word y = (offset/2) / 80;
+
+            // Get VGAChar from memory
+            Byte lower = static_cast<const MemoryBlock &>(*block)[offset % BLOCK_SIZE];
+            Byte upper = static_cast<const MemoryBlock &>(*block)[offset % BLOCK_SIZE + 1];
+            VGAChar c = {static_cast<char>(lower), to_TextFmt(upper)};
+
+            // Skip non-printable and black-background spaces
+            if (c.c < 32 || c.c > 127) continue;
+
+            // if (c.c == 32 && c.fmt.background == 0) continue;
+
+            // Draw char
+            draw_char(c, x, y);
+        }
+
+        block_offset += BLOCK_SIZE;
+    }
+
+    return true;
+
+}
+
+void Display::clear_text() const {
+    // Writes spaces to every address
+    for (Word i = 0; i < 80*25; i++) {
+        memory.writeByte(MMIO_START + i*2, 32);
+    }
+}
+
+void Display::draw_char(VGAChar c, Word x, Word y) const {
+    SDL_FRect dstRect = {
+        static_cast<float>(x) * 9,
+        static_cast<float>(y) * 14,
+        9,
+        14
+    };
+
+    SDL_Texture *glyph = glyph_cache[static_cast<unsigned char>(c.c)];
+    unsigned char *foreground_color = text_palette[c.fmt.foreground];
+
+    unsigned char *background_color = text_palette[c.fmt.background];
+
+    // Draw non-black backgrounds
+    if (c.fmt.background != 0) {
+        SDL_SetRenderDrawColor(renderer, background_color[0], background_color[1], background_color[2], 255);
+        SDL_RenderFillRect(renderer, &dstRect);
+    }
+
+    // Change glyph color (if not white) and render glyph
+    if (c.fmt.foreground != 15) SDL_SetTextureColorMod(glyph, foreground_color[0], foreground_color[1], foreground_color[2]);
+    SDL_RenderTexture(renderer, glyph, nullptr, &dstRect);
+    SDL_SetTextureColorMod(glyph, 255, 255, 255);
 }
 
 void Display::write_key(Byte scancode) const {

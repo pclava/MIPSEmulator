@@ -13,8 +13,9 @@ add_library(MIPSLib ${LIB_SOURCES}
 target_include_directories(MIPSLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/public) # allows anything linked to MIPSLib to include the headers
 target_include_directories(MIPSLib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/private)
 target_include_directories(MIPSLib PRIVATE ${sdl3_SOURCE_DIR}/include)
+target_include_directories(MIPSLib PRIVATE ${sdl_ttf_SOURCE_DIR}/include)
 
 add_executable(MIPSEmulator private/MIPS.cpp)
 add_dependencies(MIPSEmulator MIPSLib)
 target_link_libraries(MIPSEmulator PRIVATE MIPSLib)
-target_link_libraries(MIPSEmulator PRIVATE SDL3::SDL3-static)
+target_link_libraries(MIPSEmulator PRIVATE SDL3::SDL3-static SDL3_ttf::SDL3_ttf)
