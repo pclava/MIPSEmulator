@@ -1,8 +1,9 @@
 #include "Processor.h"
 #include "InstructionSet.h"
 #include "utils.h"
-#include "Syscalls.h"
 #include <climits>
+
+#include "tlb.h"
 
 using namespace MIPS;
 
@@ -13,7 +14,9 @@ void init_opcode_table(OPHandler (&op)[64], OPHandler (&funct)[64], OPHandler (&
         if (i < 17) cop0[i] = op_undefined;
     }
 
+    // Indexed by opcode
     op[0x00] = op_special;
+    op[0x01] = op_regimm;
     op[0x02] = op_j;
     op[0x03] = op_jal;
     op[0x04] = op_beq;
@@ -27,8 +30,10 @@ void init_opcode_table(OPHandler (&op)[64], OPHandler (&funct)[64], OPHandler (&
     op[0x0c] = op_andi;
     op[0x0d] = op_ori;
     op[0x0e] = op_xori;
-    op[0x10] = op_cop0;
     op[0x0f] = op_lui;
+    op[0x10] = op_cop0;
+    op[0x1c] = op_special2;
+    op[0x1f] = op_special3;
     op[0x20] = op_lb;
     op[0x21] = op_lh;
     op[0x22] = op_lwl;
@@ -42,6 +47,7 @@ void init_opcode_table(OPHandler (&op)[64], OPHandler (&funct)[64], OPHandler (&
     op[0x2b] = op_sw;
     op[0x2e] = op_swr;
 
+    // Indexed by funct code
     funct[0x00] = op_sll;
     funct[0x02] = op_srl;
     funct[0x03] = op_sra;
@@ -79,6 +85,7 @@ void init_opcode_table(OPHandler (&op)[64], OPHandler (&funct)[64], OPHandler (&
     funct[0x34] = op_teq;
     funct[0x36] = op_tne;
 
+    // Indexed by RS
     cop0[0x00] = op_mfc0;
     cop0[0x04] = op_mtc0;
     cop0[0x0b] = op_interrupts;
@@ -101,7 +108,8 @@ s32 zeroExtend(const Byte imm) {
     return static_cast<s32>(imm);
 }
 
-bool op_undefined(CPU &, Memory&, Instruction) {
+bool op_undefined(CPU &cpu, Memory&mem, Instruction instruction) {
+    printf("PC: 0x%.8x | opcode: 0x%.2x | instruction: 0x%.8x\n", cpu.PC.read(), instruction.opcode, mem.readWord(cpu.PC.read()));
     throw std::runtime_error("undefined opcode");
 }
 
@@ -114,7 +122,6 @@ bool op_special(CPU & cpu, Memory & mem, const Instruction instruction) {
 bool op_cop0(CPU & cpu, Memory & mem, const Instruction instruction) {
     return cpu.cop0_table[instruction.rs](cpu, mem, instruction);
 }
-
 
 // macro for instructions of the form rd = rs (operator) rt
 #define rfunc(operation) cpu.RF[instruction.rd] = cpu.RF[instruction.rs] operation cpu.RF[instruction.rt];
@@ -293,7 +300,6 @@ bool op_srav(CPU &cpu, Memory &, const Instruction instruction) {
 bool op_syscall(CPU &cpu, Memory &mem, const Instruction instr) {
     cpu.raise_exception(SYSCALL_EXCEPTION, instr, mem);
     return true;
-    // return do_syscall(cpu, mem);
 }
 
 bool op_break(CPU &cpu, Memory &, const Instruction) {
@@ -303,8 +309,9 @@ bool op_break(CPU &cpu, Memory &, const Instruction) {
             "Status = 0x%.8x\n"
             "EPC = 0x%.8x\n"
             "Bad = 0x%.8x\n"
-            "PC = 0x%.8x\n",
-           cpu.RF[2], cpu.c0.cause.read(), (cpu.c0.cause.read() & 0b1111100) >> 2, cpu.c0.status.read(), cpu.c0.epc.read(), cpu.c0.bad.read(), cpu.PC.read());
+            "PC = 0x%.8x\n"
+            "ASID = %d\n",
+           cpu.RF[2], cpu.c0.cause.read(), (cpu.c0.cause.read() & 0b1111100) >> 2, cpu.c0.status.read(), cpu.c0.epc.read(), cpu.c0.bad.read(), cpu.PC.read(), cpu.c0.get_asid());
     // cpu.raise_exception(BREAKPOINT_EXCEPTION, instruction, mem);
     return true;
 }
@@ -434,6 +441,9 @@ bool op_lw(CPU &cpu, Memory &mem, const Instruction instruction) {
         cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction, mem);
         return false;
+    } catch (const TLBMissException&) {
+        cpu.raise_tlbl(mem, toS32(addr), instruction);
+        return false;
     }
     R(rt) = toS32(value);
     return true;
@@ -474,6 +484,12 @@ bool op_sb(CPU &cpu, Memory &mem, const Instruction instruction) {
         cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, instruction, mem);
         return false;
+    } catch (const TLBMissException&) {
+        cpu.raise_tlbs(mem, toS32(addr), instruction);
+        return false;
+    } catch (const TLBModifyException&) {
+        cpu.raise_tlbmod(mem, toS32(addr), instruction);
+        return false;
     }
 
     return true;
@@ -496,6 +512,12 @@ bool op_sh(CPU &cpu, Memory &mem, const Instruction instruction) {
         cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, instruction, mem);
         return false;
+    } catch (const TLBMissException&) {
+        cpu.raise_tlbs(mem, toS32(addr), instruction);
+        return false;
+    } catch (const TLBModifyException&) {
+        cpu.raise_tlbmod(mem, toS32(addr), instruction);
+        return false;
     }
     return true;
 }
@@ -514,6 +536,12 @@ bool op_sw(CPU &cpu, Memory &mem, const Instruction instruction) {
         cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, instruction, mem);
         return false;
+    } catch (const TLBMissException&) {
+        cpu.raise_tlbs(mem, toS32(addr), instruction);
+        return false;
+    } catch (const TLBModifyException&) {
+        cpu.raise_tlbmod(mem, toS32(addr), instruction);
+        return false;
     }
     return true;
 }
@@ -527,6 +555,9 @@ bool op_lb(CPU &cpu, Memory &mem, const Instruction instruction) {
     } catch (const std::out_of_range&) {
         cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction, mem);
+        return false;
+    } catch (const TLBMissException&) {
+        cpu.raise_tlbl(mem, toS32(addr), instruction);
         return false;
     }
     R(rt) = signExtend(value);
@@ -542,6 +573,9 @@ bool op_lbu(CPU &cpu, Memory &mem, const Instruction instruction) {
     } catch (const std::out_of_range&) {
         cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction, mem);
+        return false;
+    } catch (const TLBMissException&) {
+        cpu.raise_tlbl(mem, toS32(addr), instruction);
         return false;
     }
     R(rt) = zeroExtend(value);
@@ -564,6 +598,9 @@ bool op_lh(CPU &cpu, Memory &mem, const Instruction instruction) {
         cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction, mem);
         return false;
+    } catch (const TLBMissException&) {
+        cpu.raise_tlbl(mem, toS32(addr), instruction);
+        return false;
     }
     R(rt) = signExtend(value);
     return true;
@@ -585,6 +622,9 @@ bool op_lhu(CPU &cpu, Memory &mem, const Instruction instruction) {
         cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction, mem);
         return false;
+    } catch (const TLBMissException&) {
+        cpu.raise_tlbl(mem, toS32(addr), instruction);
+        return false;
     }
     R(rt) = zeroExtend(value);
     return true;
@@ -604,6 +644,9 @@ bool op_lwl(CPU &cpu, Memory &mem, const Instruction instruction) {
     } catch (const std::out_of_range&) {
         cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction, mem);
+        return false;
+    } catch (const TLBMissException&) {
+        cpu.raise_tlbl(mem, toS32(addr), instruction);
         return false;
     }
     // Preserve LSBs of rt
@@ -627,6 +670,9 @@ bool op_lwr(CPU &cpu, Memory &mem, const Instruction instruction) {
     } catch (const std::out_of_range&) {
         cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction, mem);
+        return false;
+    } catch (const TLBMissException&) {
+        cpu.raise_tlbl(mem, toS32(addr), instruction);
         return false;
     }
     // Preserve MSBs of rt
@@ -655,6 +701,12 @@ bool op_swl(CPU &cpu, Memory &mem, const Instruction instruction) {
         cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_STORE, instruction, mem);
         return false;
+    } catch (const TLBMissException&) {
+        cpu.raise_tlbs(mem, toS32(addr), instruction);
+        return false;
+    } catch (const TLBModifyException&) {
+        cpu.raise_tlbmod(mem, toS32(addr), instruction);
+        return false;
     }
     return true;
 }
@@ -676,6 +728,12 @@ bool op_swr(CPU &cpu, Memory &mem, const Instruction instruction) {
         cpu.c0.vaddr.set(toS32(addr));
         cpu.raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, instruction, mem);
         return false;
+    } catch (const TLBMissException&) {
+        cpu.raise_tlbs(mem, toS32(addr), instruction);
+        return false;
+    } catch (const TLBModifyException&) {
+        cpu.raise_tlbmod(mem, toS32(addr), instruction);
+        return false;
     }
     return true;
 }
@@ -695,6 +753,113 @@ bool op_jal(CPU &cpu, Memory &, const Instruction instruction) {
     return true;
 }
 
+// REGIMM
+bool op_regimm(CPU & cpu, Memory & mem, const Instruction instruction) {
+    switch (instruction.rt) {
+        case 0b0:
+            return op_bltz(cpu, mem, instruction);
+        case 0b1:
+            return op_bgez(cpu, mem, instruction);
+        default:
+            return false;
+    }
+}
+
+bool op_bltz(CPU &cpu, Memory &, const Instruction instruction) {
+    if (R(rs) < 0) {
+        const s32 imm = static_cast<signed short>(instruction.imm) << 2;
+        cpu.queue_pc_update(cpu.PC.read() + 4 + imm);
+    }
+    return true;
+}
+
+bool op_bgez(CPU &cpu, Memory &, const Instruction instruction) {
+    if (R(rs) >= 0) {
+        const s32 imm = static_cast<signed short>(instruction.imm) << 2;
+        cpu.queue_pc_update(cpu.PC.read() + 4 + imm);
+    }
+    return true;
+}
+
+// SPECIAL2
+bool op_special2(CPU &cpu, Memory &mem, const Instruction instruction) {
+    switch (instruction.funct) {
+        case 0x02:
+            return op_mul(cpu, mem, instruction);
+        default:
+            return false;
+    }
+}
+
+bool op_mul(CPU &cpu, Memory &, const Instruction instruction) {
+    R(rd) = R(rs) * R(rt);
+    return true;
+}
+
+// SPECIAL3
+bool op_special3(CPU &cpu, Memory &mem, const Instruction instruction) {
+    switch (instruction.funct) {
+        case 0x00:
+            return op_ext(cpu, mem, instruction);
+        case 0x04:
+            return op_ins(cpu, mem, instruction);
+        case 0x20:
+            return op_bshfl(cpu, mem, instruction);
+        default:
+            return false;
+    }
+}
+
+bool op_ext(CPU &cpu, Memory &, const Instruction instruction) {
+    const u32 size = instruction.rd % 32;
+    const u32 pos = instruction.shamt % 32;
+    if (pos+size > 32) return false;
+
+    // Mask out bits [pos+size-1 : pos] of RS
+    const u32 mask = (1u << size) - 1;
+    u32 v = R(rs) >> pos;
+    v &= mask;
+    R(rt) = v;
+
+    return true;
+}
+
+bool op_ins(CPU &cpu, Memory &, const Instruction instruction) {
+    const u32 size = instruction.rd % 32;
+    const u32 pos = instruction.shamt % 32;
+    if (pos+size > 32) return false;
+
+    // Extract lower size bits of RS
+    u32 mask = (1u << size) - 1;
+    u32 v = R(rs) & mask;
+    v <<= pos;
+    mask <<= pos;
+    R(rt) &= ~(mask);
+    R(rt) |= v;
+
+    return true;
+}
+
+bool op_bshfl(CPU &cpu, Memory &mem, const Instruction instruction) {
+    switch (instruction.shamt) {
+        case 0b10000:
+            return op_seb(cpu, mem, instruction);
+        case 0b11000:
+            return op_seh(cpu, mem, instruction);
+        default:
+            return false;
+    }
+}
+
+bool op_seb(CPU &cpu, Memory &, const Instruction instruction) {
+    R(rd) = static_cast<s32>(static_cast<int8_t>(R(rt)));
+    return true;
+}
+
+bool op_seh(CPU &cpu, Memory &, const Instruction instruction) {
+    R(rd) = static_cast<s32>(static_cast<int16_t>(R(rt)));
+    return true;
+}
 
 // COP0
 
@@ -742,12 +907,18 @@ bool op_interrupts(CPU &cpu, Memory&, const Instruction instruction) {
 
 bool op_c0(CPU &cpu, Memory &mem, const Instruction instruction) {
     switch (instruction.funct) {
+        case 0x01:
+            return op_tlbr(cpu, mem, instruction);
+        case 0x02:
+            return op_tlbwi(cpu, mem, instruction);
+        case 0x08:
+            return op_tlbp(cpu, mem, instruction);
         case 0x18:
             return op_eret(cpu, mem, instruction);
         case 0x20:
             return op_wait(cpu, mem, instruction);
         default:
-            return true;
+            return false;
     }
 }
 
@@ -763,5 +934,60 @@ bool op_wait(CPU &cpu, Memory &, Instruction) {
     // power off cpu until an exception/interrupt occurs
     // cpu won't execute any instructions until then
     cpu.powered = false;
+    return true;
+}
+
+bool op_tlbr(CPU &cpu, Memory &, Instruction) {
+    // Read index
+    const s32 index = cpu.c0.index.read();
+
+    // Get TLB entry
+    TLBEntry entry = cpu.tlb.get_entry(index);
+
+    // Write EntryHi
+    cpu.c0.set_vpn2(entry.VPN);
+
+    // Write EntryLo
+    cpu.c0.set_entrylo(false, entry.EntryLo0);
+    cpu.c0.set_entrylo(true, entry.EntryLo1);
+
+    return true;
+}
+
+bool op_tlbwi(CPU &cpu, Memory &, Instruction) {
+    // Get index
+    const s32 index = cpu.c0.index.read();
+
+    // Create entry
+    TLBEntry entry{};
+
+    // Get VPN
+    entry.VPN = cpu.c0.get_vpn2();
+
+    // Get physical pages
+    entry.EntryLo0 = cpu.c0.get_entrylo(false);
+    entry.EntryLo1 = cpu.c0.get_entrylo(true);
+
+    entry.ASID = cpu.c0.get_asid();
+
+    // Write entry
+    cpu.tlb.set_entry(index, entry);
+
+    return true;
+}
+
+bool op_tlbp(CPU &cpu, Memory &, Instruction) {
+    // Check if entry at index is the same VPN and ASID, if so put index, otherwise put 0x80000000
+    uint32_t vpn = cpu.c0.get_vpn2();
+    uint32_t number = (vpn >> PAGE_OFFSET_BITS) >> 1;
+    uint32_t index = cpu.tlb.get_index(vpn);
+    TLBEntry entry = cpu.tlb.get_entry(index);
+
+    if (entry.VPN == number && entry.ASID == cpu.c0.get_asid()) {
+        cpu.c0.index.set(static_cast<s32>(index));
+        return true;
+    }
+
+    cpu.c0.index.set(static_cast<s32>(0x80000000));
     return true;
 }

@@ -1,6 +1,7 @@
 #include "Memory.h"
 
 #include "Coprocessor0.h"
+#include "tlb.h"
 #include "utils.h"
 
 using namespace MIPS;
@@ -41,13 +42,8 @@ Word MemorySegment::relAddr(const Word addr) const {
     return addr - base_address;
 }
 
-Word MemorySegment::blockIndex(const Word rel_addr) {
-    return rel_addr / BLOCK_SIZE;
-}
-
-Word MemorySegment::blockOffset(const Word rel_addr) {
-    return rel_addr % BLOCK_SIZE;
-}
+#define blockIndex(rel_addr) (rel_addr / BLOCK_SIZE)
+#define blockOffset(rel_addr) (rel_addr % BLOCK_SIZE)
 
 MemoryBlock& MemorySegment::getBlock(const Word rel_addr) {
     const Word index = blockIndex(rel_addr);
@@ -89,10 +85,13 @@ void MemorySegment::writeN(const Word addr, const Word num_bytes, const Byte *bu
 Word MemorySegment::readWord(const Word addr) {
     // Note: little endian implementation
     Word word = 0;
-    word |= readByte(addr);
-    word |= readByte(addr+1) << 8;
-    word |= readByte(addr+2) << 16;
-    word |= readByte(addr+3) << 24;
+    const Word rel_addr = relAddr(addr);
+    auto& block = getBlock(rel_addr);
+    const Word blockoffset = blockOffset(rel_addr);
+    word |= block[blockoffset];
+    word |= block[blockoffset+1] << 8;
+    word |= block[blockoffset+2] << 16;
+    word |= block[blockoffset+3] << 24;
     return word;
 }
 
@@ -125,32 +124,46 @@ void MemorySegment::reset() const {
 
 // MEMORY
 
-Memory::Memory(Coprocessor0 &c0) :
-    stack(STACK_START, STACK_LIMIT),
-    udata(DATA_START, DATA_LIMIT),
-    utext(TEXT_START, TEXT_LIMIT),
+Memory::Memory(Coprocessor0 &c0, TLB &tlb) :
+    umem(USER_MEM_START, USER_MEM_LIMIT),
     ktext(KTEXT_START, KTEXT_LIMIT),
     kdata(KDATA_START, KDATA_LIMIT),
     mmio(MMIO_START, MMIO_LIMIT),
     c0(c0),
-    heapAddress(HEAP_START) {}
+    tlb(tlb),
+    heapAddress(0) {}
 
 bool Memory::full_access() const {
     return c0.in_kernel();
 }
 
-Byte Memory::readByte(const Word addr) {
-    if (stack.inSegment(addr)) {
-        return stack.readByte(addr);
+Byte Memory::readByte(Word addr) {
+    // If in translated memory, check TLB, otherwise use unmapped address
+    if (addr < 0x80000000) {
+        // Look up address and get physical frame number. lookup raises TLBMiss so we don't have to
+        Address a = TLB::split_address(addr);
+        TLBEntry e = tlb.lookup(a.pagenumber);
+        TLBPhysicalPage p{};
+        if ((a.pagenumber >> (PAGE_OFFSET_BITS)) % 2 == 0)
+            p = e.EntryLo0;
+        else p = e.EntryLo1;
+
+        a.pagenumber = p.PFN;
+
+        return umem.readByte(TLB::combine_address(a));
     }
-    if (utext.inSegment(addr)) {
-        return utext.readByte(addr);
+
+    // Map back to user memory, and check
+    if (addr >= UNMAPPED_UMEM_ALIAS_START && addr <= UNMAPPED_UMEM_ALIAS_LIMIT)
+        addr -= UNMAPPED_UMEM_ALIAS_DIFF;
+
+    // Note that this condition would always be false if we didn't map aliased memory
+    if (umem.inSegment(addr)) {
+        return umem.readByte(addr);
     }
+
     if (ktext.inSegment(addr) && full_access()) {
         return ktext.readByte(addr);
-    }
-    if (udata.inSegment(addr)) {
-        return udata.readByte(addr);
     }
     if (kdata.inSegment(addr) && full_access()) {
         return kdata.readByte(addr);
@@ -158,21 +171,37 @@ Byte Memory::readByte(const Word addr) {
     if (mmio.inSegment(addr)) {
         return mmio.readByte(addr);
     }
+
     throw std::out_of_range("address out of range\n");
 }
 
-void Memory::readN(const Word addr, const Word num_bytes, Byte *buf) {
-    if (stack.inSegment(addr)) {
-        return stack.readN(addr, num_bytes, buf);
+void Memory::readN(Word addr, const Word num_bytes, Byte *buf) {
+
+    // If in user memory, check TLB, otherwise return unmapped address
+    if (addr < 0x80000000) {
+        // Look up address and get physical frame number. lookup raises TLBMiss so we don't have to
+        Address a = TLB::split_address(addr);
+        TLBEntry e = tlb.lookup(a.pagenumber);
+        TLBPhysicalPage p{};
+        if ((a.pagenumber >> (PAGE_OFFSET_BITS)) % 2 == 0)
+            p = e.EntryLo0;
+        else p = e.EntryLo1;
+
+        a.pagenumber = p.PFN;
+
+        return umem.readN(TLB::combine_address(a), num_bytes, buf);
     }
-    if (utext.inSegment(addr)) {
-        return utext.readN(addr, num_bytes, buf);
+
+    // Map back to user memory, and check
+    if (addr >= UNMAPPED_UMEM_ALIAS_START && addr <= UNMAPPED_UMEM_ALIAS_LIMIT)
+        addr -= UNMAPPED_UMEM_ALIAS_DIFF;
+    // Note that this condition would always be false if we didn't map aliased memory
+    if (umem.inSegment(addr)) {
+        return umem.readN(addr, num_bytes, buf);
     }
+
     if (ktext.inSegment(addr) && full_access()) {
         return ktext.readN(addr, num_bytes, buf);
-    }
-    if (udata.inSegment(addr)) {
-        return udata.readN(addr, num_bytes, buf);
     }
     if (kdata.inSegment(addr) && full_access()) {
         return kdata.readN(addr, num_bytes, buf);
@@ -180,22 +209,37 @@ void Memory::readN(const Word addr, const Word num_bytes, Byte *buf) {
     if (mmio.inSegment(addr)) {
         return mmio.readN(addr, num_bytes, buf);
     }
+
     throw std::out_of_range("address out of range\n");
 }
 
 // DOES NOT CHECK WORD BOUNDARY
-Word Memory::readWord(const Word addr) {
-    if (stack.inSegment(addr)) {
-        return stack.readWord(addr);
+Word Memory::readWord(Word addr) {
+    // If in user memory, check TLB, otherwise return unmapped address
+    if (addr < 0x80000000) {
+        // Look up address and get physical frame number. lookup raises TLBMiss so we don't have to
+        Address a = TLB::split_address(addr);
+        TLBEntry e = tlb.lookup(a.pagenumber);
+        TLBPhysicalPage p{};
+        if ((a.pagenumber >> (PAGE_OFFSET_BITS)) % 2 == 0)
+            p = e.EntryLo0;
+        else p = e.EntryLo1;
+
+        a.pagenumber = p.PFN;
+
+        return umem.readWord(TLB::combine_address(a));
     }
-    if (utext.inSegment(addr)) {
-        return utext.readWord(addr);
+
+    // Map back to user memory, and check
+    if (addr >= UNMAPPED_UMEM_ALIAS_START && addr <= UNMAPPED_UMEM_ALIAS_LIMIT)
+        addr -= UNMAPPED_UMEM_ALIAS_DIFF;
+    // Note that this condition would always be false if we didn't map aliased memory
+    if (umem.inSegment(addr)) {
+        return umem.readWord(addr);
     }
+
     if (ktext.inSegment(addr) && full_access()) {
         return ktext.readWord(addr);
-    }
-    if (udata.inSegment(addr)) {
-        return udata.readWord(addr);
     }
     if (kdata.inSegment(addr) && full_access()) {
         return kdata.readWord(addr);
@@ -203,124 +247,139 @@ Word Memory::readWord(const Word addr) {
     if (mmio.inSegment(addr)) {
         return mmio.readWord(addr);
     }
+
     throw std::out_of_range("address out of range\n");
 }
 
-void Memory::writeByte(const Word addr, Byte byte) {
-    if (stack.inSegment(addr)) {
-        stack.writeByte(addr, byte);
-        return;
+void Memory::writeByte(Word addr, Byte byte) {
+    // If in user memory, check TLB, otherwise return unmapped address
+    if (addr < 0x80000000) {
+        // Look up address and get physical frame number. lookup raises TLBMiss so we don't have to
+        Address a = TLB::split_address(addr);
+        TLBEntry e = tlb.lookup(a.pagenumber);
+        TLBPhysicalPage p{};
+        if ((a.pagenumber >> (PAGE_OFFSET_BITS)) % 2 == 0)
+            p = e.EntryLo0;
+        else p = e.EntryLo1;
+
+        a.pagenumber = p.PFN;
+
+        // Storing on clean page throws TLB_MOD exception
+        if (!p.dirty) {
+            throw TLBModifyException();
+        }
+
+        return umem.writeByte(TLB::combine_address(a), byte);
     }
-    if (utext.inSegment(addr)) {
-        utext.writeByte(addr, byte);
-        return;
+
+    // Map back to user memory, and check
+    if (addr >= UNMAPPED_UMEM_ALIAS_START && addr <= UNMAPPED_UMEM_ALIAS_LIMIT)
+        addr -= UNMAPPED_UMEM_ALIAS_DIFF;
+    // Note that this condition would always be false if we didn't map aliased memory
+    if (umem.inSegment(addr)) {
+        return umem.writeByte(addr, byte);
     }
+
     if (ktext.inSegment(addr) && full_access()) {
-        ktext.writeByte(addr, byte);
-        return;
-    }
-    if (udata.inSegment(addr)) {
-        udata.writeByte(addr, byte);
-        return;
+        return ktext.writeByte(addr, byte);
     }
     if (kdata.inSegment(addr) && full_access()) {
-        kdata.writeByte(addr, byte);
-        return;
+        return kdata.writeByte(addr, byte);
     }
     if (mmio.inSegment(addr)) {
-        mmio.writeByte(addr, byte);
-        return;
+        return mmio.writeByte(addr, byte);
     }
+
     throw std::out_of_range("address out of range\n");
 }
 
-void Memory::writeN(const Word addr, const Word num_bytes, const Byte *buf) {
-    if (stack.inSegment(addr)) {
-        stack.writeN(addr, num_bytes, buf);
-        return;
+void Memory::writeN(Word addr, const Word num_bytes, const Byte *buf) {
+    // If in user memory, check TLB, otherwise return unmapped address
+    if (addr < 0x80000000) {
+        // Look up address and get physical frame number. lookup raises TLBMiss so we don't have to
+        Address a = TLB::split_address(addr);
+        TLBEntry e = tlb.lookup(a.pagenumber);
+        TLBPhysicalPage p{};
+        if ((a.pagenumber >> (PAGE_OFFSET_BITS)) % 2 == 0)
+            p = e.EntryLo0;
+        else p = e.EntryLo1;
+
+        a.pagenumber = p.PFN;
+
+        // Storing on clean page throws TLB_MOD exception
+        if (!p.dirty) {
+            throw TLBModifyException();
+        }
+
+        return umem.writeN(TLB::combine_address(a), num_bytes, buf);
     }
-    if (utext.inSegment(addr)) {
-        utext.writeN(addr, num_bytes, buf);
-        return;
+
+    // Map back to user memory, and check
+    if (addr >= UNMAPPED_UMEM_ALIAS_START && addr <= UNMAPPED_UMEM_ALIAS_LIMIT)
+        addr -= UNMAPPED_UMEM_ALIAS_DIFF;
+    // Note that this condition would always be false if we didn't map aliased memory
+    if (umem.inSegment(addr)) {
+        return umem.writeN(addr, num_bytes, buf);
     }
+
     if (ktext.inSegment(addr) && full_access()) {
-        ktext.writeN(addr, num_bytes, buf);
-        return;
-    }
-    if (udata.inSegment(addr)) {
-        udata.writeN(addr, num_bytes, buf);
-        return;
+        return ktext.writeN(addr, num_bytes, buf);
     }
     if (kdata.inSegment(addr) && full_access()) {
-        kdata.writeN(addr, num_bytes, buf);
-        return;
+        return kdata.writeN(addr, num_bytes, buf);
     }
     if (mmio.inSegment(addr)) {
-        mmio.writeN(addr, num_bytes, buf);
-        return;
+        return mmio.writeN(addr, num_bytes, buf);
     }
+
     throw std::out_of_range("address out of range\n");
 }
 
-void Memory::writeWord(const Word addr, Word word) {
-    if (stack.inSegment(addr)) {
-        stack.writeWord(addr, word);
-        return;
+void Memory::writeWord(Word addr, Word word) {
+    // If in user memory, check TLB, otherwise return unmapped address
+    if (addr < 0x80000000) {
+        // Look up address and get physical frame number. lookup raises TLBMiss so we don't have to
+        Address a = TLB::split_address(addr);
+        TLBEntry e = tlb.lookup(a.pagenumber);
+        TLBPhysicalPage p{};
+        if ((a.pagenumber >> (PAGE_OFFSET_BITS)) % 2 == 0)
+            p = e.EntryLo0;
+        else p = e.EntryLo1;
+
+        a.pagenumber = p.PFN;
+
+        // Storing on clean page throws TLB_MOD exception
+        if (!p.dirty) {
+            throw TLBModifyException();
+        }
+
+        return umem.writeWord(TLB::combine_address(a), word);
     }
-    if (utext.inSegment(addr)) {
-        utext.writeWord(addr, word);
-        return;
+
+    // Map back to user memory, and check
+    if (addr >= UNMAPPED_UMEM_ALIAS_START && addr <= UNMAPPED_UMEM_ALIAS_LIMIT)
+        addr -= UNMAPPED_UMEM_ALIAS_DIFF;
+    // Note that this condition would always be false if we didn't map aliased memory
+    if (umem.inSegment(addr)) {
+        return umem.writeWord(addr, word);
     }
+
     if (ktext.inSegment(addr) && full_access()) {
-        ktext.writeWord(addr, word);
-        return;
-    }
-    if (udata.inSegment(addr)) {
-        udata.writeWord(addr, word);
-        return;
+        return ktext.writeWord(addr, word);
     }
     if (kdata.inSegment(addr) && full_access()) {
-        kdata.writeWord(addr, word);
-        return;
+        return kdata.writeWord(addr, word);
     }
     if (mmio.inSegment(addr)) {
-        mmio.writeWord(addr, word);
-        return;
+        return mmio.writeWord(addr, word);
     }
+
     throw std::out_of_range("address out of range\n");
-}
-
-void Memory::debugText(const int size) {
-    for (int i = 0; i < size; i++) {
-        printf("0x%.8x\n", utext.readWord(TEXT_START+4*i));
-    }
-}
-
-void Memory::debugData(const int size) {
-    for (int i = 0; i < size; i++) {
-        Byte b = udata.readByte(DATA_START+0x10000+i);
-        printf("%.8x: 0x%.2x (%c) \n", DATA_START+0x10000+i, b, b);
-    }
-}
-
-void Memory::debugKdata(const int size) {
-    for (int i = 0; i < size; i++) {
-        Byte b = kdata.readByte(KDATA_START+i);
-        printf("%.8x: 0x%.2x (%c) \n", KDATA_START+i, b, b);
-    }
-}
-
-void Memory::debugStack(const int size) {
-    for (int i = 0; i < size; i++) {
-        Byte b = stack.readByte(STACK_LIMIT-i);
-        printf("%.8x: 0x%.2x (%c) \n", STACK_LIMIT-i, b, b);
-    }
 }
 
 void Memory::reset() const {
-    stack.reset();
-    utext.reset();
-    udata.reset();
+    umem.reset();
     kdata.reset();
     ktext.reset();
+    mmio.reset();
 }

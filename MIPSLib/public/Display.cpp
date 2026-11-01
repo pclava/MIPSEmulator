@@ -60,7 +60,7 @@ unsigned char text_palette[16][3] = {
 };
 
 
-Display::Display(MemorySegment &mem) : memory(mem), palette(), numblocks(mem.table.size()), mode(TEXT) {
+Display::Display(MemorySegment &mem) : memory(mem), palette(), numblocks(mem.table.size()), mode(D_TEXT) {
     // Initialize every block
     for (Word i = 0; i < numblocks; i++) {
         mem.getBlock(i * BLOCK_SIZE);

@@ -19,8 +19,8 @@ namespace MIPS {
     };
 
     enum DisplayMode {
-        GRAPHICAL,
-        TEXT,
+        D_GRAPHICAL,
+        D_TEXT,
     };
 
     struct TextFmt {
@@ -35,6 +35,9 @@ namespace MIPS {
 
     enum ExceptionCode {
         INTERRUPT = 0,
+        TLB_MOD = 1,                        // Store occurs on valid entry with dirty bit set to 0. Kernel will check if writes are allowed, and is so set the dirty bit to 1
+        TLBL_MISS = 2,                      // Load occurs without a valid entry
+        TLBS_MISS = 3,                      // Store occurs without a valid entry
         ADDRESS_ERROR_EXCEPTION_LOAD = 4,
         ADDRESS_ERROR_EXCEPTION_STORE = 5,
         SYSCALL_EXCEPTION = 8,
@@ -43,31 +46,33 @@ namespace MIPS {
         TRAP_EXCEPTION = 13,
     };
 
-    static constexpr size_t BLOCK_SIZE = 4096; // Number of bytes per memory block
+    static constexpr size_t BLOCK_SIZE = 4096; // Number of bytes per memory block and page
 
-    /*
-     * NOTE:
-     * the real MIPS stack goes from 0x10040000 to 0x7fffffff
-     * the real MIPS text segment goes from 0x00400000 to 0x0fffffff
-     *
-     * the emulator only simulates 4 Mb of these
-     */
-    inline constexpr Word KTEXT_START = 0x80000180; // 1 Mb kernel text
-    inline constexpr Word KTEXT_LIMIT = 0x800fffff;
-    inline constexpr Word KDATA_START = 0x90000000; // 1 Mb kernel data
-    inline constexpr Word KDATA_LIMIT = 0x900fffff;
-    inline constexpr Word STACK_START = 0x7fc00000; // 4 Mb stack memory
-    inline constexpr Word STACK_LIMIT = 0x7fffffff;
-    inline constexpr Word DATA_START =  0x10000000; // 4 Mb data memory
-    inline constexpr Word DATA_LIMIT =  0x103fffff;
-    inline constexpr Word TEXT_START =  0x00400000; // 4 Mb text memory
-    inline constexpr Word TEXT_LIMIT =  0x007fffff;
+    // Non-mapped
+    inline constexpr Word KTEXT_START = 0x80000180; // 256 Mb kernel text
+    inline constexpr Word KTEXT_LIMIT = 0x8fffffff; // TODO: is this too much?
+    inline constexpr Word KDATA_START = 0x90000000; // 256 Mb kernel data
+    inline constexpr Word KDATA_LIMIT = 0x9fffffff; // TODO: is this too much?
     inline constexpr Word MMIO_START =  0xffff0000; // 64 Kb memory mapped IO (16 MemoryBlocks)
     inline constexpr Word MMIO_LIMIT =  0xffffffff;
 
-    inline constexpr Word HEAP_START =  0x10080000; // starting heap pointer (heap can go below, down to DATA_START)
+    inline constexpr Word UNMAPPED_UMEM_ALIAS_DIFF  = 0x8f000000; // how much to add/subtract by to get mapping
+    inline constexpr Word UNMAPPED_UMEM_ALIAS_START = 0x8f001000; // Addresses here map 1-1 to user memory without translation
+    inline constexpr Word UNMAPPED_UMEM_ALIAS_LIMIT = 0x8f3fffff;
 
     inline constexpr Word EXC_VEC_PTR = KDATA_START;
+
+    // Mapped
+    inline constexpr Word USER_MEM_START = 0x00001000; // 4 Mb user memory
+    inline constexpr Word USER_MEM_LIMIT = 0x003fffff;
+    // inline constexpr Word STACK_START = 0x7fc00000; // 4 Mb stack memory
+    // inline constexpr Word STACK_LIMIT = 0x7fffffff;
+    // inline constexpr Word DATA_START =  0x10000000; // 4 Mb data memory
+    // inline constexpr Word DATA_LIMIT =  0x103fffff;
+    // inline constexpr Word TEXT_START =  0x00400000; // 4 Mb text memory
+    // inline constexpr Word TEXT_LIMIT =  0x007fffff;
+    // inline constexpr Word HEAP_START =  0x10080000; // starting heap pointer (heap can go below, down to DATA_START)
+
 
     struct Register;
     struct RegisterFile;
@@ -79,6 +84,9 @@ namespace MIPS {
     struct CPU;
     struct Coprocessor0;
     struct Display;
+
+    struct TLBEntry;
+    class TLB;
 
     struct Instruction;
     using OPHandler = bool (*)(CPU&, Memory&, Instruction);

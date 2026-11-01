@@ -25,11 +25,11 @@ struct MIPS::Display {
 
     // GRAPHICS
 
-    bool render_frame() const;
+    [[nodiscard]] bool render_frame() const;
 
     // TEXT
 
-    bool render_text() const;
+    [[nodiscard]] bool render_text() const;
 
     [[nodiscard]] bool term_dirty() const;
 

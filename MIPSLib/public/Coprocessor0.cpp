@@ -9,7 +9,16 @@
  * 0 = interrupts enabled
  */
 
-Coprocessor0::Coprocessor0() : vaddr(8, 0), status(12, 0xff11), cause(13, 0), epc(14, 0), bad(0,0) {}
+Coprocessor0::Coprocessor0() :
+    vaddr(8, 0),
+    status(12, 0xff11),
+    cause(13, 0),
+    epc(14, 0),
+    entryhi(10, 0),
+    entrylo0(2, 0),
+    entrylo1(3, 0),
+    index(0, 0),
+    bad(31,0) {}
 
 // updates bits 2-6 of the cause register
 void Coprocessor0::set_cause(const ExceptionCode exception) {
@@ -80,15 +89,23 @@ bool Coprocessor0::handle_exception() const {
 
 Register & Coprocessor0::get_register(int num) {
     switch (num) {
+        case 0:
+            return index;
+        case 2:
+            return entrylo0;
+        case 3:
+            return entrylo1;
         case 8:
             return vaddr;
+        case 10:
+            return entryhi;
         case 12:
             return status;
         case 13:
             return cause;
         case 14:
             return epc;
-        case 0:
+        case 32:
             return bad;
         default:
             throw std::out_of_range("Invalid coprocessor 0 register\n");
@@ -152,4 +169,65 @@ InterruptCode Coprocessor0::get_interrupt() const {
 
 bool Coprocessor0::in_kernel() const {
     return get_mode() == KERNEL || get_exc_level();
+}
+
+uint8_t Coprocessor0::get_asid() const {
+    return entryhi.read() & 0xFF;
+}
+
+void Coprocessor0::set_vpn2(page_number vpn) {
+    vpn <<= 1; // Top bit not used
+
+    u32 mask = static_cast<u32>(-1);
+    mask <<= 32-18;
+
+    // Clear highest 18 bits of entryi
+    entryhi.set(static_cast<s32>(static_cast<u32>(entryhi.read()) & (~mask)));
+
+    // Set highest 18 bits of entryhi to vpn
+    entryhi.set(static_cast<s32>(static_cast<u32>(entryhi.read()) | vpn));
+}
+
+page_number Coprocessor0::get_vpn2() const {
+    u32 mask = static_cast<u32>(-1);
+    mask <<= 32-18;
+    page_number vpn = entryhi.read() & mask;
+    return vpn >> 1;
+}
+
+void Coprocessor0::set_entrylo(const bool hi, TLBPhysicalPage page) {
+    // PFN: bits 6-24
+    // Dirty: bit 2
+    // Valid: bit 1
+    page.PFN = (page.PFN >> PAGE_OFFSET_BITS) << 6;
+
+    Register *r = hi ? &entrylo1 : &entrylo0;
+
+    // Clear register
+    r->set(0);
+
+    // Set PFN
+    r->set(static_cast<s32>(r->read() | page.PFN));
+
+    // Set dirty
+    if (page.dirty) r->set(r->read() | 0b100);
+
+    // Set valid
+    if (page.valid) r->set(r->read() | 0b10);
+}
+
+TLBPhysicalPage Coprocessor0::get_entrylo(bool hi) {
+    TLBPhysicalPage page{};
+
+    Register *r = hi ? &entrylo1 : &entrylo0;
+
+    // Get PFN
+    s32 mask = 0x01FFFFC0;
+    page.PFN = ((r->read() & mask) >> 6) << PAGE_OFFSET_BITS;
+
+    // Get flags
+    page.dirty = (r->read() & 0b100) != 0;
+    page.valid = (r->read() & 0b10) != 0;
+
+    return page;
 }

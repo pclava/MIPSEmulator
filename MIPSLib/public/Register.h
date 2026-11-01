@@ -47,9 +47,9 @@ struct MIPS::RegisterFile {
         Register(25, 0),             // $t9
         Register(26, 0),             // $k0
         Register(27, 0),             // $k1
-        Register(28, static_cast<s32>(HEAP_START)),  // $gp
-        Register(29, static_cast<s32>(STACK_LIMIT)), // $sp
-        Register(30, static_cast<s32>(STACK_LIMIT)), // $fp
+        Register(28, 0),  // $gp
+        Register(29, 0), // $sp
+        Register(30, 0), // $fp
         Register(31, 0),             // $ra
     };
 

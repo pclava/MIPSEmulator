@@ -8,12 +8,12 @@
 
 using namespace MIPS;
 
-CPU::CPU(Coprocessor0 &coproc, std::istream& input, std::ostream& output) :
+CPU::CPU(Coprocessor0 &coproc, TLB &tlb) :
     PC(32, 0),
     HI(33, 0),
     LO(34, 0),
     c0(coproc),
-    system(input, output),
+    tlb(tlb),
     gen(0)
 {
     init_opcode_table(opcode_table, funct_table, cop0_table);
@@ -46,12 +46,16 @@ void CPU::queue_pc_update(Word addr) {
 
 Word CPU::Fetch(Memory &mem) {
     Word ret;
+    s32 addr = PC.read();
     try {
-        ret = mem.readWord(PC.read());
+        ret = mem.readWord(addr);
     } catch (const std::out_of_range&) {
-        c0.vaddr.set(PC.read());
+        c0.vaddr.set(addr);
         raise_exception(ADDRESS_ERROR_EXCEPTION_LOAD, Instruction::decode_instr(0), mem);
         return 0;
+    } catch (const TLBMissException&) {
+        raise_tlbl(mem, addr, Instruction::decode_instr(0));
+        return false;
     }
     newPC = PC.read()+4;
     return ret;
@@ -76,11 +80,29 @@ void CPU::terminate(unsigned char code) {
 
 void CPU::raise_exception(const ExceptionCode exception, const Instruction instr, Memory &) {
 
-    // Power on processor, if needed
-    powered = true;
-
     // Jump to exception handler, terminate if fatal
     if (c0.raise_exception(*this, exception, instr) == 0) terminate(255);
+}
+
+void CPU::raise_tlbl(Memory &mem, s32 addr, Instruction instr) {
+    auto [pagenumber, pageoffset] = TLB::split_address(addr);
+    c0.vaddr.set(addr); // Set vaddr to bad virtual address
+    c0.set_vpn2(pagenumber); // Set entryhi vpn2 to VPN / 2
+    raise_exception(TLBL_MISS, instr, mem);
+}
+
+void CPU::raise_tlbs(Memory &mem, s32 addr, Instruction instr) {
+    auto [pagenumber, pageoffset] = TLB::split_address(addr);
+    c0.vaddr.set(addr); // Set vaddr to bad virtual address
+    c0.set_vpn2(pagenumber); // Set entryhi vpn2 to VPN
+    raise_exception(TLBS_MISS, instr, mem);
+}
+
+void CPU::raise_tlbmod(Memory &mem, s32 addr, Instruction instr) {
+    auto [pagenumber, pageoffset] = TLB::split_address(addr);
+    c0.vaddr.set(addr); // Set vaddr to bad virtual address
+    c0.set_vpn2(pagenumber >> 1); // Set entryhi vpn2 to VPN / 2
+    raise_exception(TLB_MOD, instr, mem);
 }
 
 bool CPU::raise_interrupt(InterruptCode interrupt, Memory &mem) {
@@ -138,11 +160,11 @@ void load_file(const char *path, mof_file &file) {
     fclose(f);
 }
 
-void load_text(Memory &mem, const mof_file &file) {
-    for (u32 i = 0; i < file.hdr.text/4; i++) { // Text segment
-        mem.writeWord(TEXT_START+4*i, file.text[i]);
-    }
-}
+// void load_text(Memory &mem, const mof_file &file) {
+//     for (u32 i = 0; i < file.hdr.text/4; i++) { // Text segment
+//         mem.writeWord(TEXT_START+4*i, file.text[i]);
+//     }
+// }
 
 void load_ktext(Memory &mem, const mof_file &file) {
     for (u32 i = 0; i < file.hdr.ktext/4; i++) { // Text segment
@@ -150,11 +172,11 @@ void load_ktext(Memory &mem, const mof_file &file) {
     }
 }
 
-void load_data(Memory &mem, const mof_file &file) {
-    for (u32 i = 0; i < file.hdr.data; i++) { // Data segment
-        mem.writeByte(DATA_START+0x00010000+i, file.data[i]); // begin writing at 0x10010000
-    }
-}
+// void load_data(Memory &mem, const mof_file &file) {
+//     for (u32 i = 0; i < file.hdr.data; i++) { // Data segment
+//         mem.writeByte(DATA_START+0x00010000+i, file.data[i]); // begin writing at 0x10010000
+//     }
+// }
 
 void load_kdata(Memory &mem, const mof_file &file) {
     for (u32 i = 0; i < file.hdr.kdata; i++) { // Data segment
@@ -163,43 +185,43 @@ void load_kdata(Memory &mem, const mof_file &file) {
 }
 
 // Returns sp
-s32 load_stack(Memory &mem, const int argc, char **argv) {
-    /* STACK ORGANIZATION
-     * [ARGC][ARGV[0]][ARGV[1]]...[ARGV[ARGC-1]][ARGV[0]...]...[ARGV[ARGC-1]...\0] |
-     * ^     ^                    ^             ^                               ^
-     * |     |                    |             |                               |
-     * $sp $sp+4            $sp+4+4(ARGC-1) $sp+4+4(ARGC)                  0x7fffffff
-     *
-     * starting $sp = 0x7fffffff - size of above + 1
-     */
-
-    u32 num_bytes = 4+4*argc; // one word for argc and each argv
-    for (int i = 0; i < argc; i++) {
-        num_bytes += strlen(argv[i])+1; // count size of each argument
-    }
-    while (num_bytes % 4 != 0) {
-        num_bytes += 1;
-    }
-    const u32 sp = STACK_LIMIT-num_bytes+1;
-
-    mem.writeWord(sp, argc); // Write argc
-
-    // Write strings
-    u32 write_addr = sp + 4 + 4*argc; // pointer to start of current argument
-    for (int i = 0; i < argc; i++) {
-        char *str = argv[i];
-        // Save pointer
-        mem.writeWord(sp+4 + 4*i, write_addr);
-        // Write string
-        for (u32 j = 0; j < strlen(str)+1; j++) {
-            char c = str[j];
-            mem.writeByte(write_addr, c);   // write character
-            write_addr++;                   // increment address
-        }
-    }
-
-    return static_cast<s32>(sp);
-}
+// s32 load_stack(Memory &mem, const int argc, char **argv) {
+//     /* STACK ORGANIZATION
+//      * [ARGC][ARGV[0]][ARGV[1]]...[ARGV[ARGC-1]][ARGV[0]...]...[ARGV[ARGC-1]...\0] |
+//      * ^     ^                    ^             ^                               ^
+//      * |     |                    |             |                               |
+//      * $sp $sp+4            $sp+4+4(ARGC-1) $sp+4+4(ARGC)                  0x7fffffff
+//      *
+//      * starting $sp = 0x7fffffff - size of above + 1
+//      */
+//
+//     u32 num_bytes = 4+4*argc; // one word for argc and each argv
+//     for (int i = 0; i < argc; i++) {
+//         num_bytes += strlen(argv[i])+1; // count size of each argument
+//     }
+//     while (num_bytes % 4 != 0) {
+//         num_bytes += 1;
+//     }
+//     const u32 sp = STACK_LIMIT-num_bytes+1;
+//
+//     mem.writeWord(sp, argc); // Write argc
+//
+//     // Write strings
+//     u32 write_addr = sp + 4 + 4*argc; // pointer to start of current argument
+//     for (int i = 0; i < argc; i++) {
+//         char *str = argv[i];
+//         // Save pointer
+//         mem.writeWord(sp+4 + 4*i, write_addr);
+//         // Write string
+//         for (u32 j = 0; j < strlen(str)+1; j++) {
+//             char c = str[j];
+//             mem.writeByte(write_addr, c);   // write character
+//             write_addr++;                   // increment address
+//         }
+//     }
+//
+//     return static_cast<s32>(sp);
+// }
 
 void CPU::load_kernel(const char *path, Memory &mem) {
     mof_file file{};
@@ -209,8 +231,8 @@ void CPU::load_kernel(const char *path, Memory &mem) {
     load_kdata(mem, file);
 
     // TEMPORARY- DELETE!
-    load_text(mem, file);
-    load_data(mem, file);
+    // load_text(mem, file);
+    // load_data(mem, file);
 
     // Set PC
     set_pc_entry(KTEXT_START);

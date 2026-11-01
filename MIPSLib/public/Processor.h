@@ -8,7 +8,6 @@
 #include "utils.h"
 #include "Memory.h"
 #include "Coprocessor0.h"
-#include "Syscalls.h"
 
 struct MIPS::CPU {
     Register PC;
@@ -22,14 +21,14 @@ struct MIPS::CPU {
     OPHandler cop0_table[17]{};
 
     Coprocessor0 &c0;
-    System system; // contains file streams for input and output
+    TLB &tlb;
 
     std::mt19937 gen;
 
     unsigned char exit = 0; // exit code
     bool powered = true;    // whether the cpu should execute instructions each cycle
 
-    explicit CPU(Coprocessor0 &coproc, std::istream& input, std::ostream& output);
+    explicit CPU(Coprocessor0 &coproc, TLB &tlb);
 
     void cycle(Memory &mem);
 
@@ -53,6 +52,12 @@ struct MIPS::CPU {
     void raise_exception(ExceptionCode exception, Instruction instr, Memory &mem);
 
     bool raise_interrupt(InterruptCode interrupt, Memory &mem);
+
+    void raise_tlbl(Memory &mem, s32 addr, Instruction instr);
+
+    void raise_tlbs(Memory &mem, s32 addr, Instruction instr);
+
+    void raise_tlbmod(Memory &mem, s32 addr, Instruction instr);
 
     void load_kernel(const char* path, Memory &mem);
 };

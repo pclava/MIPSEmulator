@@ -2,6 +2,7 @@
 #define MIPS_COPROCESSOR0_H
 
 #include "Register.h"
+#include "tlb.h"
 #include "utils.h"
 
 enum InterruptCode {
@@ -17,6 +18,11 @@ struct MIPS::Coprocessor0 {
     Register status;
     Register cause;
     Register epc;
+    Register entryhi;
+    Register entrylo0;
+    Register entrylo1;
+    Register index;
+
     Register bad; // NOT PART OF MIPS: added by me to make debugging easier. holds machine code that raised exception
 
     Word exc_vec = 0;
@@ -61,6 +67,18 @@ struct MIPS::Coprocessor0 {
 
     // Returns whether the CPU is currently in the kernel (either in kernel mode or handling an exception)
     [[nodiscard]] bool in_kernel() const;
+
+    // Returns ASID
+    [[nodiscard]] uint8_t get_asid() const;
+
+    // Sets the contents of VPN2
+    void set_vpn2(page_number vpn);
+
+    [[nodiscard]] page_number get_vpn2() const;
+
+    void set_entrylo(bool hi, TLBPhysicalPage page);
+
+    [[nodiscard]] TLBPhysicalPage get_entrylo(bool hi);
 
 };
 

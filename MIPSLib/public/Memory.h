@@ -48,12 +48,6 @@ struct MIPS::MemorySegment {
     // Returns address relative to start of segment (does not check if in segment)
     [[nodiscard]] Word relAddr(Word addr) const;
 
-    // Given a relative address, return its block index
-    static Word blockIndex(Word rel_addr);
-
-    // Given a relative address, return its location in a block
-    static Word blockOffset(Word rel_addr);
-
     // Does not check range
     MemoryBlock& getBlock(Word rel_addr);
 
@@ -85,9 +79,7 @@ struct MIPS::MemorySegment {
 };
 
 struct MIPS::Memory {
-    MemorySegment stack;
-    MemorySegment udata;
-    MemorySegment utext;
+    MemorySegment umem;
     MemorySegment ktext;
     MemorySegment kdata;
     MemorySegment mmio;
@@ -95,15 +87,22 @@ struct MIPS::Memory {
     // Coprocessor 0 to check mode
     Coprocessor0 &c0;
 
-    Word heapAddress; // address of first unallocated byte in heap
+    // TLB for tlbing
+    TLB &tlb;
 
-    explicit Memory(Coprocessor0 &c0);
+    Word heapAddress; // address of first unallocated byte in heap TODO: delete
+
+    explicit Memory(Coprocessor0 &c0, TLB &tlb);
+
+
 
     Byte readByte(Word addr);
 
     void readN(Word addr, Word num_bytes, Byte *buf);
 
     Word readWord(Word addr);
+
+
 
     void writeByte(Word addr, Byte byte);
 
@@ -113,14 +112,6 @@ struct MIPS::Memory {
 
     // Whether kernel memory is accessible
     [[nodiscard]] bool full_access() const;
-
-    void debugText(int size);
-
-    void debugData(int size);
-
-    void debugKdata(int size);
-
-    void debugStack(int size);
 
     void reset() const;
 };
