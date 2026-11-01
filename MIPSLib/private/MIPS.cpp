@@ -15,6 +15,7 @@ using namespace MIPS;
 #define TICK_SPEED 10 // tick length in milliseconds
 
 // TODO: formalize
+
 #define font_path "/Users/paulclavaud/Documents/Code/MIPSComputer/emulator/examples/font.ttf"
 
 struct FrontendInterrupt {
