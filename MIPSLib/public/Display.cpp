@@ -60,10 +60,19 @@ unsigned char text_palette[16][3] = {
 };
 
 
-Display::Display(MemorySegment &mem) : memory(mem), palette(), numblocks(mem.table.size()), mode(D_TEXT) {
+// Display::Display(MemorySegment &mem) : Device(mem), palette(), numblocks(mem.table.size()), mode(D_TEXT) {
+//     // Initialize every block
+//     for (Word i = 0; i < numblocks; i++) {
+//         mem.getBlock(i * BLOCK_SIZE);
+//     }
+//     // Initialize color palette
+//     memcpy(palette, default_palette, sizeof(default_palette));
+// }
+
+Display::Display() : Device(DISPLAY_START, DISPLAY_LIMIT), palette(), numblocks(memory.table.size()), mode(D_TEXT) {
     // Initialize every block
     for (Word i = 0; i < numblocks; i++) {
-        mem.getBlock(i * BLOCK_SIZE);
+        memory.getBlock(i * BLOCK_SIZE);
     }
     // Initialize color palette
     memcpy(palette, default_palette, sizeof(default_palette));
@@ -132,7 +141,6 @@ bool Display::term_dirty() const {
     return false;
 }
 
-
 /*
  * Based on VGA text mode (80x25) (characters 9x14)
  * Characters are represented as two bytes
@@ -176,10 +184,10 @@ bool Display::render_text() const {
 
 }
 
-void Display::clear_text() const {
+void Display::clear_text() {
     // Writes spaces to every address
     for (Word i = 0; i < 80*25; i++) {
-        memory.writeByte(MMIO_START + i*2, 32);
+        memory.writeByte(DISPLAY_START + i*2, 32);
     }
 }
 
@@ -208,6 +216,29 @@ void Display::draw_char(VGAChar c, Word x, Word y) const {
     SDL_SetTextureColorMod(glyph, 255, 255, 255);
 }
 
-void Display::write_key(Byte scancode) const {
+void Display::write_key(Byte scancode) {
     memory.writeByte(KEY_BUFFER, scancode);
+}
+
+// Write to display memory
+void Display::signal(Word addr, Word val, size_t bytes) {
+    switch (bytes) {
+        case 1:
+            return memory.writeByte(addr, val & 0xFF);
+        case 4:
+            return memory.writeWord(addr, val);
+        default:
+            throw std::out_of_range("Invalid alignment");
+    }
+}
+
+Word Display::query(Word addr, size_t bytes) {
+    switch (bytes) {
+        case 1:
+            return memory.readByte(addr);
+        case 4:
+            return memory.readWord(addr);
+        default:
+            throw std::out_of_range("Invalid alignment");
+    }
 }

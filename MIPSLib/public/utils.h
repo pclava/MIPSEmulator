@@ -53,8 +53,12 @@ namespace MIPS {
     inline constexpr Word KTEXT_LIMIT = 0x8fffffff; // TODO: is this too much?
     inline constexpr Word KDATA_START = 0x90000000; // 256 Mb kernel data
     inline constexpr Word KDATA_LIMIT = 0x9fffffff; // TODO: is this too much?
-    inline constexpr Word MMIO_START =  0xffff0000; // 64 Kb memory mapped IO (16 MemoryBlocks)
-    inline constexpr Word MMIO_LIMIT =  0xffffffff;
+
+    inline constexpr Word DISPLAY_START =  0xffff0000;
+    inline constexpr Word DISPLAY_LIMIT =  0xfffffa03; // last word for key registers
+
+    inline constexpr Word DISK_START = 0xfffffa04; // 2 words and 2 bytes
+    inline constexpr Word DISK_LIMIT =  0xfffffa0d;
 
     inline constexpr Word UNMAPPED_UMEM_ALIAS_DIFF  = 0x8f000000; // how much to add/subtract by to get mapping
     inline constexpr Word UNMAPPED_UMEM_ALIAS_START = 0x8f001000; // Addresses here map 1-1 to user memory without translation
@@ -83,10 +87,13 @@ namespace MIPS {
 
     struct CPU;
     struct Coprocessor0;
-    struct Display;
 
     struct TLBEntry;
     class TLB;
+
+    class Device;
+    class Display;
+    class Disk;
 
     struct Instruction;
     using OPHandler = bool (*)(CPU&, Memory&, Instruction);

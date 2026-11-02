@@ -82,7 +82,8 @@ struct MIPS::Memory {
     MemorySegment umem;
     MemorySegment ktext;
     MemorySegment kdata;
-    MemorySegment mmio;
+
+    Display &display;
 
     // Coprocessor 0 to check mode
     Coprocessor0 &c0;
@@ -92,9 +93,7 @@ struct MIPS::Memory {
 
     Word heapAddress; // address of first unallocated byte in heap TODO: delete
 
-    explicit Memory(Coprocessor0 &c0, TLB &tlb);
-
-
+    explicit Memory(Coprocessor0 &c0, TLB &tlb, Display &display);
 
     Byte readByte(Word addr);
 

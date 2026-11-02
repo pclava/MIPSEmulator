@@ -2,6 +2,7 @@
 #include "Display.h"
 #include "Processor.h"
 #include "utils.h"
+#include "Disk.h"
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
 #include <queue>
@@ -212,30 +213,20 @@ struct Frontend {
  */
 
 int main(int argc, char *argv[]) {
-    if (argc <= 1 || argc > 3) {
-        fprintf(stderr, "Error: please provide an executable\n");
+    if (argc <= 1 || argc > 2) {
+        fprintf(stderr, "Error: please provide a single argument\n");
         return 1;
     }
 
-    bool use_peripherals = false;
-    int arg = 1;
     int input_file = 1;
 
-    if (argc == 3 && argv[1][0] == '-') {
-        input_file = 2;
-        if (strcmp(argv[arg], "-d") == 0) {
-            use_peripherals = true;
-        } else {
-            fprintf(stderr, "Error: unrecognized option \"%s\"\n", argv[arg]);
-            return 1;
-        }
-    }
-
-    // Main computer
+    // Peripherals and main computer
+    Display display{};
     Coprocessor0 c0{};
     TLB tlb{&c0};
     CPU cpu{c0, tlb};
-    Memory mem{c0, tlb};
+    Memory mem{c0, tlb, display};
+    Disk disk{"idk", mem}; // TODO: configurable disk size
 
     // Prepare for kernel boot
     c0.set_mode(KERNEL);
@@ -244,15 +235,10 @@ int main(int argc, char *argv[]) {
     cpu.load_kernel(argv[input_file], mem);
     c0.exc_vec = mem.readWord(EXC_VEC_PTR); // Exception vector MUST be the first word of the kernel data!
 
-    // Peripherals
-    std::unique_ptr<Display> display = nullptr;
-    std::queue<FrontendInterrupt> interrupt_queue;
-    std::unique_ptr<Frontend> frontend = nullptr;
-    if (use_peripherals) {
-        display = std::make_unique<Display>(mem.mmio);
-        frontend = std::make_unique<Frontend>(interrupt_queue, mem, *display);
-        frontend->setMode(D_TEXT); // Start in text mode!
-    }
+    // Frontend
+    std::queue<FrontendInterrupt> interrupt_queue; // allows multiple interrupts to arrive between handlings
+    Frontend frontend{interrupt_queue, mem, display};
+    frontend.setMode(D_TEXT); // Start in text mode!
 
     // Temporary!!!
     bool load_file = true;
@@ -337,37 +323,32 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        // PERIPHERALS
-        if (use_peripherals) {
+        // HANDLE PERIPHERALS
+        if (!interrupt_queue.empty()) {
+            // Receive interrupt
+            auto&[code, scancode] = interrupt_queue.front();
+            interrupt_queue.pop();
 
-            // If an interrupt is queued and interrupts are enabled, handle it.
-            // This allows multiple interrupts to happen at the same time without
-            // being ignored.
-
-            // receive interrupt
-            // if interrupts are enabled, process them
-            // either way, wake up the cpu
-            if (!interrupt_queue.empty()) {
-                auto&[code, scancode] = interrupt_queue.front();
-                interrupt_queue.pop();
-                if (c0.get_interrupts_enabled()) {
-                    if (code == KEY_UP || code == KEY_DOWN) {
-                        display->write_key(scancode);
-                    }
-
-                    cpu.raise_interrupt(code, mem);
+            // If enabled, process interrupt
+            if (c0.get_interrupts_enabled()) {
+                if (code == KEY_UP || code == KEY_DOWN) {
+                    display.write_key(scancode);
                 }
-                cpu.powered = true;
+
+                cpu.raise_interrupt(code, mem);
             }
 
-            // Run frontend
-            if (frontend->running) {
-                frontend->Cycle();
-            }
-            else {
-                printf("Program aborted by user\n");
-                break;
-            }
+            // Either way, wake up CPU
+            cpu.powered = true;
+        }
+
+        // RUN FRONTEND
+        if (frontend.running) {
+            frontend.Cycle();
+        }
+        else {
+            printf("Program aborted by user\n");
+            break;
         }
     }
 

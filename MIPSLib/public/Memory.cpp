@@ -3,6 +3,8 @@
 #include "Coprocessor0.h"
 #include "tlb.h"
 #include "utils.h"
+#include "Display.h"
+#include "Device.h"
 
 using namespace MIPS;
 
@@ -124,11 +126,11 @@ void MemorySegment::reset() const {
 
 // MEMORY
 
-Memory::Memory(Coprocessor0 &c0, TLB &tlb) :
+Memory::Memory(Coprocessor0 &c0, TLB &tlb, Display &display) :
     umem(USER_MEM_START, USER_MEM_LIMIT),
     ktext(KTEXT_START, KTEXT_LIMIT),
     kdata(KDATA_START, KDATA_LIMIT),
-    mmio(MMIO_START, MMIO_LIMIT),
+    display(display),
     c0(c0),
     tlb(tlb),
     heapAddress(0) {}
@@ -168,8 +170,10 @@ Byte Memory::readByte(Word addr) {
     if (kdata.inSegment(addr) && full_access()) {
         return kdata.readByte(addr);
     }
-    if (mmio.inSegment(addr)) {
-        return mmio.readByte(addr);
+
+    // MMIO
+    if (display.inMemory(addr)) {
+        return display.query(addr, 1) & 0xFF;
     }
 
     throw std::out_of_range("address out of range\n");
@@ -206,8 +210,10 @@ void Memory::readN(Word addr, const Word num_bytes, Byte *buf) {
     if (kdata.inSegment(addr) && full_access()) {
         return kdata.readN(addr, num_bytes, buf);
     }
-    if (mmio.inSegment(addr)) {
-        return mmio.readN(addr, num_bytes, buf);
+
+    // MMIO
+    if (display.inMemory(addr)) {
+        throw std::out_of_range("can't readN from device\n");
     }
 
     throw std::out_of_range("address out of range\n");
@@ -244,8 +250,10 @@ Word Memory::readWord(Word addr) {
     if (kdata.inSegment(addr) && full_access()) {
         return kdata.readWord(addr);
     }
-    if (mmio.inSegment(addr)) {
-        return mmio.readWord(addr);
+
+    // MMIO
+    if (display.inMemory(addr)) {
+        return display.query(addr, 4);
     }
 
     throw std::out_of_range("address out of range\n");
@@ -286,8 +294,10 @@ void Memory::writeByte(Word addr, Byte byte) {
     if (kdata.inSegment(addr) && full_access()) {
         return kdata.writeByte(addr, byte);
     }
-    if (mmio.inSegment(addr)) {
-        return mmio.writeByte(addr, byte);
+
+    // MMIO
+    if (display.inMemory(addr)) {
+        return display.signal(addr, byte, 1);
     }
 
     throw std::out_of_range("address out of range\n");
@@ -328,8 +338,10 @@ void Memory::writeN(Word addr, const Word num_bytes, const Byte *buf) {
     if (kdata.inSegment(addr) && full_access()) {
         return kdata.writeN(addr, num_bytes, buf);
     }
-    if (mmio.inSegment(addr)) {
-        return mmio.writeN(addr, num_bytes, buf);
+
+    // MMIO
+    if (display.inMemory(addr)) {
+        throw std::out_of_range("can't writeN to device\n");
     }
 
     throw std::out_of_range("address out of range\n");
@@ -370,8 +382,10 @@ void Memory::writeWord(Word addr, Word word) {
     if (kdata.inSegment(addr) && full_access()) {
         return kdata.writeWord(addr, word);
     }
-    if (mmio.inSegment(addr)) {
-        return mmio.writeWord(addr, word);
+
+    // MMIO
+    if (display.inMemory(addr)) {
+        return display.signal(addr, word, 4);
     }
 
     throw std::out_of_range("address out of range\n");
@@ -381,5 +395,4 @@ void Memory::reset() const {
     umem.reset();
     kdata.reset();
     ktext.reset();
-    mmio.reset();
 }
