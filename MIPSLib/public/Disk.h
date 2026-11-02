@@ -15,6 +15,7 @@ enum DiskStatus {
     DSK_BAD_SECTOR,
     DSK_BAD_ADDR,
     DSK_BAD_OP,
+    DSK_BAD,
 };
 
 class MIPS::Disk : public Device {

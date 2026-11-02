@@ -72,6 +72,9 @@ void Disk::disk_write(Word sector, Word addr) {
     if (fwrite(buf, 1, SECTOR_SIZE, diskimg) != SECTOR_SIZE) {
         disk_status = DSK_BAD_SECTOR;
     }
+    if (fflush(diskimg) != 0) {
+        disk_status = DSK_BAD;
+    }
 
 }
 
