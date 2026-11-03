@@ -2,14 +2,13 @@
 
 using namespace MIPS;
 
-Disk::Disk(const std::string &path, Memory &mem) :
+Disk::Disk(const std::string &path) :
     Device(DISK_START, DISK_LIMIT),
     path(path),
     disk_sector(0),
     disk_addr(0),
     disk_ctrl(0),
-    disk_status(0),
-    mem(mem)
+    disk_status(0)
 {
     diskimg = std::fopen(path.c_str(), "rb+");
     if (diskimg == nullptr) {
@@ -34,7 +33,7 @@ bool Disk::disk_seek(Word sector) {
     return true;
 }
 
-void Disk::disk_read(Word sector, Word addr) {
+void Disk::disk_read(Word sector, Word addr, Memory &mem) {
     // Seek
     if (!disk_seek(sector)) return;
 
@@ -55,7 +54,7 @@ void Disk::disk_read(Word sector, Word addr) {
 
 }
 
-void Disk::disk_write(Word sector, Word addr) {
+void Disk::disk_write(Word sector, Word addr, Memory &mem) {
     // Seek
     if (!disk_seek(sector)) return;
 
@@ -78,14 +77,10 @@ void Disk::disk_write(Word sector, Word addr) {
 
 }
 
-void Disk::signal(const Word addr, Word val, const size_t bytes) {
+void Disk::signal(const Word addr, Word val, const size_t, Memory &mem) {
 
     switch (addr) {
         case DISK_CTRL:
-            if (bytes != 1) {
-                disk_status = DSK_BAD_OP;
-                return;
-            }
             disk_ctrl = val;
             break;
         case DISK_SECTOR:
@@ -99,10 +94,10 @@ void Disk::signal(const Word addr, Word val, const size_t bytes) {
 
     switch (static_cast<DiskOp>(val)) {
         case READ:
-            disk_read(disk_sector, disk_addr);
+            disk_read(disk_sector, disk_addr, mem);
             return;
         case WRITE:
-            disk_write(disk_sector, disk_addr);
+            disk_write(disk_sector, disk_addr, mem);
             return;
         default:
             disk_status = DSK_BAD_OP;

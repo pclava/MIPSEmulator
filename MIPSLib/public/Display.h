@@ -45,7 +45,7 @@ public:
 
     // Device functions
 
-    void signal(Word addr, Word val, size_t bytes) override;
+    void signal(Word addr, Word val, size_t bytes, Memory &) override;
 
     [[nodiscard]] Word query(Word addr, size_t bytes) override;
 

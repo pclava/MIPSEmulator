@@ -221,7 +221,7 @@ void Display::write_key(Byte scancode) {
 }
 
 // Write to display memory
-void Display::signal(Word addr, Word val, size_t bytes) {
+void Display::signal(Word addr, Word val, size_t bytes, Memory &) {
     switch (bytes) {
         case 1:
             return memory.writeByte(addr, val & 0xFF);

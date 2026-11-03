@@ -29,7 +29,9 @@ public:
 
     // Tell the device that a write has come in
     // bytes can be 1 (writeByte, val & 0xFF) or 4 (writeWord, val)
-    virtual void signal(Word addr, Word val, size_t bytes) = 0;
+    // the mem argument is if the device needs to write to the main memory
+    // such as in a disk read
+    virtual void signal(Word addr, Word val, size_t bytes, Memory &mem) = 0;
 
     // Ask the device for data when a read comes in
     // bytes can be 1 (readByte, 0xFF) or 4 (readWord)

@@ -83,17 +83,19 @@ struct MIPS::Memory {
     MemorySegment ktext;
     MemorySegment kdata;
 
-    Display &display;
-
     // Coprocessor 0 to check mode
     Coprocessor0 &c0;
 
     // TLB for tlbing
     TLB &tlb;
 
+    // Devices
+    Display &display;
+    Disk &disk;
+
     Word heapAddress; // address of first unallocated byte in heap TODO: delete
 
-    explicit Memory(Coprocessor0 &c0, TLB &tlb, Display &display);
+    explicit Memory(Coprocessor0 &c0, TLB &tlb, Display &display, Disk &disk);
 
     Byte readByte(Word addr);
 

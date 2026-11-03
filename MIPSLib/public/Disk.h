@@ -38,16 +38,14 @@ private:
 
     bool disk_seek(Word sector);
 
-    void disk_read(Word sector, Word addr);
+    void disk_read(Word sector, Word addr, Memory &mem);
 
-    void disk_write(Word sector, Word addr);
+    void disk_write(Word sector, Word addr, Memory &mem);
 
 public:
-    Memory &mem;
+    explicit Disk(const std::string &path);
 
-    explicit Disk(const std::string &path, Memory &mem);
-
-    void signal(Word addr, Word val, size_t bytes) override;
+    void signal(Word addr, Word val, size_t bytes, Memory &mem) override;
 
     [[nodiscard]] Word query(Word addr, size_t bytes) override;
 };
