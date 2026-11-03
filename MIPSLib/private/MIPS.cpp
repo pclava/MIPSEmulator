@@ -207,14 +207,14 @@ struct Frontend {
  * EMULATOR ENTRY AND MAIN LOOP
  *
  * Usage:
- * MIPSEmulator <options> <executable> <arguments>
+ * MIPSEmulator kernel filesystem
  *
  * Use the -d flag before the executable to enable peripherals like the display and keyboard
  */
 
 int main(int argc, char *argv[]) {
-    if (argc <= 1 || argc > 2) {
-        fprintf(stderr, "Error: please provide a single argument\n");
+    if (argc != 3) {
+        fprintf(stderr, "Error: please provide an executable and a file system\n");
         return 1;
     }
 
@@ -226,7 +226,7 @@ int main(int argc, char *argv[]) {
     TLB tlb{&c0};
     CPU cpu{c0, tlb};
     Memory mem{c0, tlb, display};
-    Disk disk{"idk", mem}; // TODO: configurable disk size
+    Disk disk{argv[2], mem}; // TODO: configurable disk size
 
     // Prepare for kernel boot
     c0.set_mode(KERNEL);
