@@ -24,6 +24,19 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(SDL3 SDL_ttf)
 
+function(embed_file target file symbol)
+    get_filename_component(abs "${file}" ABSOLUTE)
+    set(out "${CMAKE_CURRENT_BINARY_DIR}/${symbol}.cpp")
+    add_custom_command(
+            OUTPUT "${out}"
+            COMMAND ${CMAKE_COMMAND}
+            -DINPUT=${abs} -DOUTPUT=${out} -DSYMBOL=${symbol}
+            -P ${CMAKE_SOURCE_DIR}/embed.cmake
+            DEPENDS "${abs}" "${CMAKE_SOURCE_DIR}/embed.cmake"
+            VERBATIM)
+    target_sources(${target} PRIVATE "${out}")
+endfunction()
+
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 add_subdirectory(MIPSLib)
 include(CPack)

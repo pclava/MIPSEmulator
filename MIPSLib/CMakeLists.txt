@@ -14,6 +14,9 @@ target_include_directories(MIPSLib PRIVATE ${sdl3_SOURCE_DIR}/include)
 target_include_directories(MIPSLib PRIVATE ${sdl_ttf_SOURCE_DIR}/include)
 
 add_executable(MIPSEmulator private/MIPS.cpp)
+
+embed_file(MIPSEmulator "${CMAKE_SOURCE_DIR}/font.ttf" font_ttf)
+
 add_dependencies(MIPSEmulator MIPSLib)
 target_link_libraries(MIPSEmulator PRIVATE MIPSLib)
 target_link_libraries(MIPSEmulator PRIVATE SDL3::SDL3-static SDL3_ttf::SDL3_ttf)

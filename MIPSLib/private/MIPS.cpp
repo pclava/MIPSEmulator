@@ -15,9 +15,9 @@ using namespace MIPS;
 
 #define TICK_SPEED 10 // tick length in milliseconds
 
-// TODO: formalize
-
-#define font_path "/Users/paulclavaud/Documents/Code/MIPSComputer/emulator/examples/font.ttf"
+#define PTSIZE_DEF 50.0f // default font size
+extern const unsigned char font_ttf[];
+extern const std::size_t font_ttf_size;
 
 struct FrontendInterrupt {
     InterruptCode code;
@@ -63,7 +63,8 @@ struct Frontend {
             assert(0 && "Failed to initialize TTF");
         }
 
-        font = TTF_OpenFont(font_path, 50.0f);
+        SDL_IOStream *stream = SDL_IOFromConstMem(font_ttf, font_ttf_size);
+        font = TTF_OpenFontIO(stream, true, 50.0f);
         if (!font) {
             assert(0 && "Failed to load font");
         }
@@ -241,36 +242,6 @@ int main(int argc, char *argv[]) {
     Frontend frontend{interrupt_queue, mem, display};
     frontend.setMode(D_TEXT); // Start in text mode!
 
-    // Temporary!!!
-    // bool load_file = true;
-    // mof_file file{};
-    // u32 text_read = 0;
-    // u32 data_read = 0;
-    // bool text_done = false;
-    // bool data_done = false;
-    // if (load_file) {
-    //     auto path = "/Users/paulclavaud/Documents/Code/MIPSComputer/kernel/userprgm.out";
-    //     FILE *f = fopen(path, "rb+");
-    //
-    //     // Read header
-    //     mof_read_header(f, &file.hdr);
-    //     fseek(f, 0, SEEK_END);
-    //     const long size = ftell(f);
-    //     rewind(f);
-    //     void *map = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fileno(f), 0);
-    //     file.file = map;
-    //     file.size = static_cast<uint32_t>(size);
-    //     file.text = mof_text(file.file);
-    //     file.data = mof_data(file.file, &file.hdr);
-    //     file.ktext = mof_ktext(file.file, &file.hdr);
-    //     file.kdata = mof_kdata(file.file, &file.hdr);
-    //     file.relocs = mof_relocs(file.file, &file.hdr);
-    //     file.syms = mof_symbols(file.file, &file.hdr);
-    //     file.strings = mof_strtab(file.file, &file.hdr);
-    //     fclose(f);
-    // }
-    // end temporary
-
     // Main loop
     while (true) {
 
@@ -284,38 +255,6 @@ int main(int argc, char *argv[]) {
 
                 // Fetch, decode, and execute next instruction
                 cpu.cycle(mem);
-
-                // Temporary!!!
-                // if (load_file) {
-                //     // Check register
-                //     uint32_t reg = mem.readWord(0xFFFFFA04);
-                //     if ((reg & 0b1) != 0) {
-                //         // Write!
-                //         reg &= ~0b1;
-                //
-                //         if ((reg & 0b10) != 0) {
-                //             if (file.hdr.data < data_read) throw std::runtime_error("no more data!");
-                //             u32 to_read = file.hdr.data - data_read < BLOCK_SIZE ? file.hdr.data - data_read : BLOCK_SIZE;
-                //             mem.writeN(0x90010000, to_read, file.data+data_read);
-                //             data_read += BLOCK_SIZE;
-                //             if (file.hdr.data < data_read) {
-                //                 reg |= 0b100;
-                //                 data_done = true;
-                //             }
-                //         } else {
-                //             if (file.hdr.text < text_read) throw std::runtime_error("no more text!");
-                //             u32 to_read = file.hdr.text - text_read < BLOCK_SIZE ? file.hdr.text - text_read : BLOCK_SIZE;
-                //             mem.writeN(0x90010000, to_read, reinterpret_cast<const Byte *>(file.text)+text_read);
-                //             text_read += BLOCK_SIZE;
-                //             if (file.hdr.text < text_read) {
-                //                 reg |= 0b100;
-                //                 text_done = true;
-                //             }
-                //         }
-                //         if (data_done && text_done) load_file = false;
-                //         mem.writeWord(0xFFFFFA04, reg);
-                //     }
-                // }
 
             } catch (std::runtime_error &e) {
                 // IF CPU TERMINATED, CATCH AND EXIT
