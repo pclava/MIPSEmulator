@@ -17,10 +17,13 @@ struct Frontend {
     SDL_Renderer *renderer;
 
     bool running = true;
-    Uint64 refresh_rate = 0;
-    Uint64 cycles = 0;
-    Uint64 last_frame = 0;
-    Uint64 last_update = 0;
+    Uint64 refresh_rate = 10000; // how many cycles per refresh
+    Uint64 refresh_cycles = 0; // how many cycles since last refresh
+    Uint64 frame_cycles = 0; // how many cycles since last frame
+    Uint64 update_cycles = 0; // how many cycles since last title update
+    Uint64 last_frame = 0; // time of last frame
+    Uint64 last_update = 0; // time of last title update
+    Uint64 frame_count = 0; // frames since last update
     static constexpr Uint64 frame_delay = 1000/60;
 
     std::queue<FrontendInterrupt> &interrupts;
@@ -30,12 +33,14 @@ struct Frontend {
     // TODO: error checks
     explicit Frontend(std::queue<FrontendInterrupt> &interrupts, Memory &mem, Display &display) : interrupts(interrupts), mem(mem), display(display) {
         SDL_Init(SDL_INIT_VIDEO);
-        window = SDL_CreateWindow("(MIPSEmulator)", 320, 200, SDL_WINDOW_RESIZABLE);
+        window = SDL_CreateWindow("(MIPSEmulator)", 640, 400, SDL_WINDOW_RESIZABLE);
         renderer = SDL_CreateRenderer(window, nullptr);
         SDL_SetRenderLogicalPresentation(renderer, 320, 200, SDL_LOGICAL_PRESENTATION_LETTERBOX);
     }
 
     ~Frontend() {
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
         SDL_Quit();
     }
 
@@ -67,32 +72,50 @@ struct Frontend {
 
         // Calculate fps and clock speed
         if (current_time >= last_update + 1000) {
-            std::string title = "(MIPSEmulator) Refresh Rate: ";
-            title+= std::to_string(refresh_rate);
-            title+= " CPU Speed: ";
-            title+= std::to_string(cycles);
+
+            std::string title = "(MIPSEmulator) CPU speed: ";
+            std::string hz = std::to_string(update_cycles);
+            int64_t i = static_cast<int64_t>(hz.length()) - 3;
+            while (i > 0) {
+                hz.insert(i, ",");
+                i -= 3;
+            }
+            title += hz;
+            title += " hz | ";
+            std::string fps = std::to_string(frame_count);
+            title += fps;
+            title += " fps";
             SDL_SetWindowTitle(window, title.c_str());
 
+            frame_count = 0;
+            update_cycles = 0;
             last_update = current_time;
-            refresh_rate = 0;
-            cycles = 0;
         }
 
         // Determine whether we should draw the frame
         Uint64 dt = current_time - last_frame;
         if (dt >= frame_delay) {
+            float late = static_cast<float>(dt) / static_cast<float>(frame_delay);
+            refresh_rate = static_cast<Uint64>(static_cast<float>(frame_cycles) / late) / 8;
+
             display.draw_screen(*renderer);
             SDL_RenderPresent(renderer);
             last_frame = current_time;
-            refresh_rate++;
+            frame_count++;
+            frame_cycles = 0;
             interrupts.push({DISPLAY_REFRESH, SDL_SCANCODE_UNKNOWN});
         }
     }
 
     void Cycle() {
-        Input();
-        Render();
-        cycles++;
+        if (refresh_cycles >= refresh_rate) {
+            Input();
+            Render();
+            refresh_cycles = 0;
+        }
+        refresh_cycles++;
+        frame_cycles++;
+        update_cycles++;
     }
 };
 
