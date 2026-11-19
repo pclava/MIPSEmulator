@@ -27,5 +27,7 @@ The emulator is little-endian.
 
 The list of supported instructions and their opcodes can be found in `InstructionSet.cpp`.
 
+The font is courtesy of VileR at https://int10h.org/oldschool-pc-fonts/.
+
 ---
 Every line of code in this repository was written by a human.
