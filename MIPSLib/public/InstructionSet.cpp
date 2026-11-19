@@ -196,7 +196,18 @@ bool op_sll(CPU &cpu, Memory &, const Instruction instruction) {
     return true;
 }
 
-bool op_srl(CPU &cpu, Memory &, const Instruction instruction) {
+bool op_rotr(CPU &cpu, Memory&, const Instruction instruction) {
+    unsigned char shamt = (instruction.shamt % 32 + 32) % 32;
+    u32 res = std::rotr(toU32(R(rt)), shamt); // have not tested :(
+    R(rd) = toS32(res);
+    return true;
+}
+
+bool op_srl(CPU &cpu, Memory &mem, const Instruction instruction) {
+    if (R(rs) == 1) {
+        return op_rotr(cpu, mem, instruction);
+    }
+
     // get shamt mod 32
     unsigned char shamt = (instruction.shamt % 32 + 32) % 32;
     // first perform on unsigned to guarantee logical shift

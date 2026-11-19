@@ -56,6 +56,7 @@ bool op_or(CPU&, Memory&, Instruction);
 bool op_slt(CPU&, Memory&, Instruction);
 bool op_sltu(CPU&, Memory&, Instruction);
 bool op_sll(CPU&, Memory&, Instruction);
+bool op_rotr(CPU&, Memory&, Instruction);
 bool op_srl(CPU&, Memory&, Instruction);
 bool op_sllv(CPU&, Memory&, Instruction);
 bool op_srlv(CPU&, Memory&, Instruction);
