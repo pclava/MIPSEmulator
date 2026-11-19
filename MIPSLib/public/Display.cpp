@@ -169,7 +169,7 @@ bool Display::render_text() const {
             VGAChar c = {static_cast<char>(lower), to_TextFmt(upper)};
 
             // Skip non-printable and black-background spaces
-            if (c.c < 32 || c.c > 127) continue;
+            if (c.c < 32) continue;
 
             // if (c.c == 32 && c.fmt.background == 0) continue;
 

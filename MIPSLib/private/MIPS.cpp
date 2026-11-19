@@ -6,6 +6,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
 #include <queue>
+#include <format>
 
 #include <sys/mman.h>
 #include "mof.h"
