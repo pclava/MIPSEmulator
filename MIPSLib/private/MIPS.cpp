@@ -251,7 +251,7 @@ int main(int argc, char *argv[]) {
             try {
                 // Check status bit 31 for power (NOTE: not a real MIPS thing)
                 if (c0.status.read() > 0) {
-                    throw std::runtime_error(std::format("\nKernel shutdown with code {}", cpu.RF[2]));
+                    throw std::runtime_error(std::format("\nKernel shutdown with code {}\n", cpu.RF[2]));
                 }
 
                 // Fetch, decode, and execute next instruction
