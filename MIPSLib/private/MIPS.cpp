@@ -164,7 +164,7 @@ struct Frontend {
             else if (display.mode == D_TEXT) {
                 draw = display.render_text();
             }
-            if (draw) SDL_RenderPresent(renderer);
+            if (draw) {SDL_RenderPresent(renderer);}
             frame_count++;
             last_frame = current_time;
             frame_cycles = 0;

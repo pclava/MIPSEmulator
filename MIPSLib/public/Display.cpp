@@ -151,6 +151,7 @@ bool Display::term_dirty() const {
 bool Display::render_text() const {
     // Loop through buffer and render each character
     if (!term_dirty()) return false;
+    SDL_RenderClear(renderer);
 
     // Poll dirty addresses from both blocks
     Word block_offset = 0;
@@ -168,10 +169,8 @@ bool Display::render_text() const {
             Byte upper = static_cast<const MemoryBlock &>(*block)[offset % BLOCK_SIZE + 1];
             VGAChar c = {static_cast<char>(lower), to_TextFmt(upper)};
 
-            // Skip non-printable and black-background spaces
+            // Skip non-printable text
             if (c.c < 32) continue;
-
-            // if (c.c == 32 && c.fmt.background == 0) continue;
 
             // Draw char
             draw_char(c, x, y);
@@ -192,6 +191,7 @@ void Display::clear_text() {
 }
 
 void Display::draw_char(VGAChar c, Word x, Word y) const {
+    // We might? want to skip spaces if they're the same bg color as the current background
     SDL_FRect dstRect = {
         static_cast<float>(x) * 9,
         static_cast<float>(y) * 14,
@@ -204,11 +204,9 @@ void Display::draw_char(VGAChar c, Word x, Word y) const {
 
     unsigned char *background_color = text_palette[c.fmt.background];
 
-    // Draw non-black backgrounds
-    if (c.fmt.background != 0) {
-        SDL_SetRenderDrawColor(renderer, background_color[0], background_color[1], background_color[2], 255);
-        SDL_RenderFillRect(renderer, &dstRect);
-    }
+    // Draw ALL backgrounds (we can't count on the background being black by default)
+    SDL_SetRenderDrawColor(renderer, background_color[0], background_color[1], background_color[2], 255);
+    SDL_RenderFillRect(renderer, &dstRect);
 
     // Change glyph color (if not white) and render glyph
     if (c.fmt.foreground != 15) SDL_SetTextureColorMod(glyph, foreground_color[0], foreground_color[1], foreground_color[2]);
