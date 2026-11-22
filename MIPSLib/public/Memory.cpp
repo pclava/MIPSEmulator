@@ -78,10 +78,12 @@ void MemorySegment::readN(const Word addr, const Word num_bytes, Byte *buf) {
 }
 
 void MemorySegment::writeN(const Word addr, const Word num_bytes, const Byte *buf) {
-    const Word rel_addr = relAddr(addr);
-    auto& block = getBlock(rel_addr);
+    // const Word rel_addr = relAddr(addr);
+    // auto& block = getBlock(rel_addr);
     for (Word i = 0; i < num_bytes; i++) {
-        block[blockOffset(rel_addr)+i] = buf[i];
+        const Word rel_addr = relAddr(addr+i);
+        auto& block = getBlock(rel_addr);
+        block[blockOffset(rel_addr)] = buf[i];
     }
 }
 
