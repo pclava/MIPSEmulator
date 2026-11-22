@@ -69,10 +69,10 @@ void MemorySegment::writeByte(const Word addr, const Byte data) {
 }
 
 void MemorySegment::readN(const Word addr, const Word num_bytes, Byte *buf) {
-    const Word rel_addr = relAddr(addr);
-    auto& block = getBlock(rel_addr);
     for (Word i = 0; i < num_bytes; i++) {
-        const Word new_addr = blockOffset(rel_addr) + i;
+        const Word rel_addr = relAddr(addr+i);
+        auto& block = getBlock(rel_addr);
+        const Word new_addr = blockOffset(rel_addr);
         buf[i] = static_cast<char>(block[new_addr]);
     }
 }
