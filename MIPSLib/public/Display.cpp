@@ -46,15 +46,28 @@ Display::Display(MemorySegment &mem) : memory(mem), palette(), numblocks(mem.tab
     for (Word i = 0; i < numblocks; i++) {
         mem.getBlock(i*BLOCK_SIZE);
     }
+    // Initialize color palette
     memcpy(palette, default_palette, sizeof(default_palette));
 }
 
-void Display::draw_screen(SDL_Renderer &renderer) const {
+bool Display::is_dirty() const {
+    for (Word i = 0; i < numblocks; i++) {
+        auto& block = memory.table[i];
+        if (block->dirty) return true;
+    }
+    return false;
+}
+
+
+bool Display::draw_screen(SDL_Renderer &renderer) const {
+    if (!is_dirty()) return false;
+    SDL_RenderClear(&renderer);
     Word offset = 0;
 
     // Loop through each block
     for (Word i = 0; i < numblocks; i++) {
         auto& block = memory.table[i];
+        block->dirty = false;
 
         // Loop through each pixel (for the last block, we have to stop earlier)
         Word limit = i == numblocks - 1 ? 2560 : BLOCK_SIZE;
@@ -72,6 +85,7 @@ void Display::draw_screen(SDL_Renderer &renderer) const {
 
         offset += BLOCK_SIZE;
     }
+    return true;
 }
 
 void Display::write_key(Byte scancode) const {

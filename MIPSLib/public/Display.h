@@ -14,9 +14,11 @@ struct MIPS::Display {
 
     explicit Display(MemorySegment &mem);
 
-    void draw_screen(SDL_Renderer &renderer) const;
+    bool draw_screen(SDL_Renderer &renderer) const;
 
     void write_key(Byte scancode) const;
+
+    bool is_dirty() const;
 
 };
 

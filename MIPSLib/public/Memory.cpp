@@ -9,11 +9,14 @@ using namespace MIPS;
 
 MemoryBlock::MemoryBlock() : data(BLOCK_SIZE, 0) {}
 
+// Read
 Byte MemoryBlock::operator[](const Word offset) const {
     return data[offset];
 }
 
+// Write
 Byte & MemoryBlock::operator[](const Word offset) {
+    dirty = true;
     return data[offset];
 }
 
@@ -65,19 +68,19 @@ void MemorySegment::writeByte(const Word addr, const Byte data) {
 }
 
 void MemorySegment::readN(const Word addr, const Word num_bytes, Byte *buf) {
-    const Word rel_addr = relAddr(addr);
-    auto& block = getBlock(rel_addr);
     for (Word i = 0; i < num_bytes; i++) {
-        const Word new_addr = blockOffset(rel_addr) + i;
+        const Word rel_addr = relAddr(addr+i);
+        auto& block = getBlock(rel_addr);
+        const Word new_addr = blockOffset(rel_addr);
         buf[i] = static_cast<char>(block[new_addr]);
     }
 }
 
 void MemorySegment::writeN(const Word addr, const Word num_bytes, const Byte *buf) {
-    const Word rel_addr = relAddr(addr);
-    auto& block = getBlock(rel_addr);
     for (Word i = 0; i < num_bytes; i++) {
-        block[blockOffset(rel_addr)+i] = buf[i];
+        const Word rel_addr = relAddr(addr+i);
+        auto& block = getBlock(rel_addr);
+        block[blockOffset(rel_addr)] = buf[i];
     }
 }
 

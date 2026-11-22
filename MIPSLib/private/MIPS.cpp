@@ -1,3 +1,5 @@
+#include <cassert>
+
 #include "Display.h"
 #include "Processor.h"
 #include "utils.h"
@@ -32,9 +34,12 @@ struct Frontend {
 
     // TODO: error checks
     explicit Frontend(std::queue<FrontendInterrupt> &interrupts, Memory &mem, Display &display) : interrupts(interrupts), mem(mem), display(display) {
-        SDL_Init(SDL_INIT_VIDEO);
+        if (!SDL_Init(SDL_INIT_VIDEO)) {
+            assert(0 && "Failed to initialize SDL");
+        }
         window = SDL_CreateWindow("(MIPSEmulator)", 640, 400, SDL_WINDOW_RESIZABLE);
         renderer = SDL_CreateRenderer(window, nullptr);
+        SDL_SetDefaultTextureScaleMode(renderer, SDL_SCALEMODE_NEAREST); // nearest neighbor scaling
         SDL_SetRenderLogicalPresentation(renderer, 320, 200, SDL_LOGICAL_PRESENTATION_LETTERBOX);
     }
 
@@ -98,8 +103,9 @@ struct Frontend {
             float late = static_cast<float>(dt) / static_cast<float>(frame_delay);
             refresh_rate = static_cast<Uint64>(static_cast<float>(frame_cycles) / late) / 8;
 
-            display.draw_screen(*renderer);
-            SDL_RenderPresent(renderer);
+            if (display.draw_screen(*renderer)) {
+                SDL_RenderPresent(renderer);
+            }
             last_frame = current_time;
             frame_count++;
             frame_cycles = 0;
@@ -179,6 +185,7 @@ int main(int argc, char *argv[]) {
                 // being ignored.
                 if (use_peripherals) {
                     if (c0.get_interrupts_enabled() && !interrupt_queue.empty()) {
+                        printf("interrupt\n");
                         FrontendInterrupt x = interrupt_queue.front();
                         interrupt_queue.pop();
                         if (x.code == KEY_UP || x.code == KEY_DOWN) {

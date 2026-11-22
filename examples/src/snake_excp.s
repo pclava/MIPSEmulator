@@ -41,10 +41,7 @@ INT_RET:
 
     mtc0    $0, $13         # Clear Cause register
 
-    mfc0    $k0, $12        # Get Status register
-    ori     $k0, $k0, 1     # Enable interrupts
-    mtc0    $k0, $12        # Set Status register
-
+    ei      $0
     eret                    # Return
 
 INT_KEYDOWN:

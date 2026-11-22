@@ -23,6 +23,7 @@
 // Note: does not perform safety checks
 struct MIPS::MemoryBlock {
     std::vector<Byte> data;
+    bool dirty = false;
 
     MemoryBlock();
 

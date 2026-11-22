@@ -56,6 +56,7 @@ bool op_or(CPU&, Memory&, Instruction);
 bool op_slt(CPU&, Memory&, Instruction);
 bool op_sltu(CPU&, Memory&, Instruction);
 bool op_sll(CPU&, Memory&, Instruction);
+bool op_rotr(CPU&, Memory&, Instruction);
 bool op_srl(CPU&, Memory&, Instruction);
 bool op_sllv(CPU&, Memory&, Instruction);
 bool op_srlv(CPU&, Memory&, Instruction);
@@ -115,6 +116,23 @@ bool op_break(CPU&, Memory&, Instruction);
 bool op_j(CPU&, Memory&, Instruction);
 bool op_jal(CPU&, Memory&, Instruction);
 
+/* === REGIMM === */
+bool op_regimm(CPU&, Memory&, Instruction);
+bool op_bltz(CPU&, Memory&, Instruction);
+bool op_bgez(CPU&, Memory&, Instruction);
+
+/* === SPECIAL2 === */
+bool op_special2(CPU&, Memory&, Instruction);
+bool op_mul(CPU&, Memory&, Instruction);
+
+/* === SPECIAL3 === */
+bool op_special3(CPU&, Memory&, Instruction);
+bool op_ext(CPU&, Memory&, Instruction);
+bool op_ins(CPU&, Memory&, Instruction);
+bool op_bshfl(CPU&, Memory&, Instruction);
+bool op_seb(CPU&, Memory&, Instruction);
+bool op_seh(CPU&, Memory&, Instruction);
+
 /* === COP0 === */
 bool op_mfc0(CPU&, Memory&, Instruction);
 bool op_mtc0(CPU&, Memory&, Instruction);
@@ -122,6 +140,5 @@ bool op_interrupts(CPU&, Memory&, Instruction);
 bool op_c0(CPU&, Memory&, Instruction);
 bool op_eret(CPU&, Memory&, Instruction);
 bool op_wait(CPU&, Memory&, Instruction);
-
 
 #endif //MIPS_INSTRUCTION_H

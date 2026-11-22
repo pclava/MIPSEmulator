@@ -24,6 +24,7 @@ extern "C" {
 enum mof_segment {
     TEXT,
     DATA,
+    BSS,
     KTEXT,
     KDATA,
     UNDEF
@@ -46,6 +47,7 @@ struct mof_header {
     uint32_t magic; // must equal MOF_MAGIC
     uint32_t text;  // size in bytes of text segment
     uint32_t data;  // size in bytes of data segment
+    uint32_t bss;   // size in bytes of bss segment
     uint32_t ktext; // size in bytes of kernel text segment
     uint32_t kdata; // size in bytes of kernel data segment
     uint32_t rels;  // size in bytes of relocation table
@@ -68,7 +70,7 @@ struct mof_file {
 };
 
 #define MOF_MAGIC 0x00464f4d; // "MOF" little-endian
-#define MOF_HEADERSIZE 32
+#define MOF_HEADERSIZE 36
 #define MOF_TXTOFF (MOF_HEADERSIZE)
 #define MOF_DTAOFF(head) (MOF_TXTOFF + (head)->text)
 #define MOF_KTXTOFF(head) (MOF_DTAOFF(head) + (head)->data)
@@ -80,8 +82,8 @@ struct mof_file {
 struct mof_symbol {
     uint32_t index;     // offset in string table
     uint32_t offset;    // offset of symbol from start of segment
-    uint16_t segment;    // segment of symbol (text or data)
-    uint16_t binding;    // symbol binding (local or global)
+    uint16_t segment;   // segment of symbol (text or data or bss)
+    uint16_t binding;   // symbol binding (local or global)
 };
 
 #define MOF_SYMSIZE 12
@@ -89,8 +91,8 @@ struct mof_symbol {
 struct mof_relocation {
     // "address at (segment+target_offset) requires relocation of type (reloc_type) for the symbol (&strings[index])"
     uint32_t index;      // offset in string table of dependency
-    uint32_t offset;    // offset of target from start of segment
-    uint16_t segment;    // segment of target (text or data)
+    uint32_t offset;     // offset of target from start of segment
+    uint16_t segment;    // segment of target (text or data). who needs the relocation?
     uint16_t type;       // type of relocation
 };
 

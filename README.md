@@ -11,6 +11,8 @@ To install, download one of the available binaries under **Releases**, or build 
 
 `$ cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF`
 
+Linux users may need to add `-DSDL_X11_XSCRNSAVER=OFF -DSDL_X11_XTEST=OFF`
+
 `$ cmake --build build`
 
 `$ cmake --install build --prefix dist`

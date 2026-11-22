@@ -4,7 +4,8 @@
 .define _DATA 0x10010000
 .define _STACK 0x7fffffff
 .define _HEAP 0x10080000
-.define _KTEXT 0x80000180
+.define _EXCVEC 0x80000180
+.define _KTEXT 0x80000000
 .define _KDATA 0x90000000
 .define _DISPLAYADDR 0xffff0000
 .define _MMIO 0xfffffa00
@@ -22,6 +23,7 @@
 .define _SYSWRITEFILE   15
 .define _SYSCLOSEFILE   16
 .define _SYSEXIT2       17
+# non-canonical:
 .define _SYSPRINTHEX    20
 .define _SYSPRINTBIN    21
 .define _SYSPRINTU      22
@@ -30,6 +32,26 @@
 .define _SYSSEED        25
 .define _SYSRAND        26
 .define _SYSRANDRANGE   27
+.define _SYSTERMCTL     28
+.define _SYSEXEC        29
+.define _SYSFORK        30
+.define _SYSWAIT        31
+.define _SYSSLEEP       32
+
+.macro peek %r %tmp
+    addiu   %tmp, $v0, 0
+    addiu   $v0, %r, 0
+    break
+    addiu   $v0, %tmp, 0
+.end_macro
+
+.macro negu %rd, %rs
+    subu    %rd, $0, %rs
+.end_macro
+
+.macro not %rd, %rs
+    nor %rd, %rs, $0
+.end_macro
 
 # Push to stack
 .macro push %r
@@ -93,26 +115,16 @@
     bne %r, $0, %lbl
 .end_macro
 
-# Branch greater than or equal to zero
-.macro bgez %r %lbl
-    bge %r, $0, %lbl
-.end_macro
-
-# Branch on less than zero
-.macro bltz %r %lbl
-    blt %r, $0, %lbl
-.end_macro
-
 # Load address
 .macro la %r %lbl
     lui $at, %hi(%lbl)
-    ori %r, $at, %lo(%lbl)
+    addiu %r, $at, %lo(%lbl)
 .end_macro
 
 # Load immediate
 .macro li %r %imm
     lui $at, %hi(%imm)
-    ori %r, $at, %lo(%imm)
+    addiu %r, $at, %lo(%imm)
 .end_macro
 
 # Terminate program with exit code 0
