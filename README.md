@@ -4,6 +4,8 @@ The emulator only supports a subset of the instructions supported by the assembl
 
 The emulator supports memory-mapped graphics and IO using SDL3. Use the `-d` flag before the executable name to use these features.
  
+This version of the emulator will not run [yeast](https://github.com/pclava/yeast), my kernel. Use the **emu-kernel** branch for this.
+
 The goals of this project were to learn C++ and to learn how emulators work.
 
 ## Installation
