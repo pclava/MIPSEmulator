@@ -321,8 +321,9 @@ bool op_break(CPU &cpu, Memory &, const Instruction) {
             "EPC = 0x%.8x\n"
             "Bad = 0x%.8x\n"
             "PC = 0x%.8x\n"
+            "VAddr = 0x%.8x\n"
             "ASID = %d\n",
-           cpu.RF[2], cpu.c0.cause.read(), (cpu.c0.cause.read() & 0b1111100) >> 2, cpu.c0.status.read(), cpu.c0.epc.read(), cpu.c0.bad.read(), cpu.PC.read(), cpu.c0.get_asid());
+           cpu.RF[2], cpu.c0.cause.read(), (cpu.c0.cause.read() & 0b1111100) >> 2, cpu.c0.status.read(), cpu.c0.epc.read(), cpu.c0.bad.read(), cpu.PC.read(), cpu.c0.vaddr.read(), cpu.c0.get_asid());
     // cpu.raise_exception(BREAKPOINT_EXCEPTION, instruction, mem);
     return true;
 }
