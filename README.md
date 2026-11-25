@@ -11,9 +11,7 @@ The goals of this project were to learn C++ and to learn how emulators work.
 ## Installation
 To install, download one of the available binaries under **Releases**, or build the project yourself:
 
-`$ cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF`
-
-Linux users may need to add `-DSDL_X11_XSCRNSAVER=OFF -DSDL_X11_XTEST=OFF`
+`$ cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DSDL_X11_XSCRNSAVER=OFF -DSDL_X11_XTEST=OFF`
 
 `$ cmake --build build`
 
