@@ -7,7 +7,7 @@ This is the **kernel version** of the emulator, written specifically to support 
 ## Installation
 To install, download one of the available binaries under **Releases**, or build the project yourself:
 
-`$ cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF`
+`$ cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DSDL_X11_XSCRNSAVER=OFF -DSDL_X11_XTEST=OFF -DSDLTTF_VENDORED=ON`
 
 `$ cmake --build build`
 
